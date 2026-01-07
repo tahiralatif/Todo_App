@@ -99,10 +99,10 @@
 
 ### CLI Controller - Mark Complete
 
-- [ ] T023 [P] [US3] Implement CLIController.mark_complete() using questionary.text()
-- [ ] T024 [P] [US3] Add validation for already-completed tasks
-- [ ] T025 [P] [US3] Add Rich success feedback with ✅ icon
-- [ ] T026 [P] [US3] Add error handling for invalid IDs
+- [X] T023 [P] [US3] Implement CLIController.mark_complete() using questionary.text()
+- [X] T024 [P] [US3] Add validation for already-completed tasks
+- [X] T025 [P] [US3] Add Rich success feedback with ✅ icon
+- [X] T026 [P] [US3] Add error handling for invalid IDs
 
 **Checkpoint:** User Stories 1, 2, 3 complete - status tracking working
 
@@ -116,10 +116,10 @@
 
 ### CLI Controller - Update Task
 
-- [ ] T027 [P] [US4] Implement CLIController.update_task() using questionary.text()
-- [ ] T028 [P] [US4] Preserve existing values when empty input
-- [ ] T029 [P] [US4] Add Rich confirmation feedback
-- [ ] T030 [P] [US4] Handle invalid ID errors gracefully
+- [X] T027 [P] [US4] Implement CLIController.update_task() using questionary.text()
+- [X] T028 [P] [US4] Preserve existing values when empty input
+- [X] T029 [P] [US4] Add Rich confirmation feedback
+- [X] T030 [P] [US4] Handle invalid ID errors gracefully
 
 **Checkpoint:** User Stories 1-4 complete - full task management working
 
@@ -133,10 +133,10 @@
 
 ### CLI Controller - Delete Task
 
-- [ ] T031 [P] [US5] Implement CLIController.delete_task() using questionary.text()
-- [ ] T032 [P] [US5] Add confirmation prompt using questionary.confirm()
-- [ ] T033 [P] [US5] Add Rich success/cancellation messages
-- [ ] T034 [P] [US5] Handle invalid ID errors safely
+- [X] T031 [P] [US5] Implement CLIController.delete_task() using questionary.text()
+- [X] T032 [P] [US5] Add confirmation prompt using questionary.confirm()
+- [X] T033 [P] [US5] Add Rich success/cancellation messages
+- [X] T034 [P] [US5] Handle invalid ID errors safely
 
 **Checkpoint:** User Stories 1-5 complete - all task operations working
 
@@ -150,10 +150,10 @@
 
 ### Main Entry Point
 
-- [ ] T035 [P] [US6] Create main.py entry point
-- [ ] T036 [P] [US6] Implement main() function calling CLIController.run()
-- [ ] T037 [P] [US6] Add Rich goodbye message using Panel
-- [ ] T038 [P] [US6] Implement clean sys.exit(0) termination
+- [X] T035 [P] [US6] Create main.py entry point
+- [X] T036 [P] [US6] Implement main() function calling CLIController.run()
+- [X] T037 [P] [US6] Add Rich goodbye message using Panel
+- [X] T038 [P] [US6] Implement clean sys.exit(0) termination
 
 **Checkpoint:** All user stories complete - application is fully functional
 
@@ -163,11 +163,11 @@
 
 **Purpose:** Improvements that affect multiple user stories
 
-- [ ] T039 [P] Create pyproject.toml with project configuration
-- [ ] T040 [P] Write unit tests for TaskManager methods in tests/test_task_manager.py
-- [ ] T041 [P] Verify all Rich styling follows UI specifications
-- [ ] T042 [P] Test error handling scenarios
-- [ ] T043 [P] Verify no raw print() statements used
+- [X] T039 [P] Create pyproject.toml with project configuration
+- [X] T040 [P] Write unit tests for TaskManager methods in tests/test_task_manager.py
+- [X] T041 [P] Verify all Rich styling follows UI specifications
+- [X] T042 [P] Test error handling scenarios
+- [X] T043 [P] Verify no raw print() statements used
 
 ---
 

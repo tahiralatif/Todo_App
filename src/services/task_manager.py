@@ -90,8 +90,13 @@ class TaskManager:
     def reset(cls) -> None:
         """Reset the singleton state (primarily for testing).
 
-        This clears all tasks and resets the ID counter.
+        This clears all tasks, resets the ID counter, and removes the persistence file.
         """
+        if os.path.exists(cls._DATA_FILE):
+            try:
+                os.remove(cls._DATA_FILE)
+            except OSError:
+                pass
         cls._instance = None
         cls._next_id = 1
         cls._tasks = []
