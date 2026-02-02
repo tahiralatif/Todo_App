@@ -1,10 +1,10 @@
 """Task service for CRUD operations with user isolation."""
 
 import logging
-from datetime import datetime
-from typing import List
+from datetime import datetime, timedelta
+from typing import List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.task import Task
@@ -45,20 +45,55 @@ async def create_task(
 async def get_user_tasks(
     session: AsyncSession,
     user_id: str,
+    status: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    include_deleted: bool = False,
 ) -> List[Task]:
     """
-    Get all tasks for a specific user (scoped query by user_id).
-
-    Per MVP spec: no filtering, sorting, or pagination applied.
+    Get tasks for a specific user with optional filtering.
 
     Args:
         session: Async database session
         user_id: Owning user's UUID (from JWT sub claim)
+        status: Filter by status ("pending", "completed", "all", "deleted")
+        date_from: Filter tasks created after this date
+        date_to: Filter tasks created before this date
+        include_deleted: Whether to include soft-deleted tasks
 
     Returns:
-        List of Task instances belonging to the user
+        List of Task instances belonging to the user with applied filters
     """
     statement = select(Task).where(Task.user_id == user_id)
+
+    # Apply filters based on status
+    if status:
+        if status.lower() == "pending":
+            statement = statement.where(and_(Task.completed == False, Task.is_deleted == False))
+        elif status.lower() == "completed":
+            statement = statement.where(and_(Task.completed == True, Task.is_deleted == False))
+        elif status.lower() == "deleted":
+            statement = statement.where(Task.is_deleted == True)
+        elif status.lower() == "all":
+            if not include_deleted:
+                statement = statement.where(Task.is_deleted == False)
+        else:
+            # Default behavior - exclude deleted tasks
+            if not include_deleted:
+                statement = statement.where(Task.is_deleted == False)
+    else:
+        # Default behavior - exclude deleted tasks
+        if not include_deleted:
+            statement = statement.where(Task.is_deleted == False)
+
+    # Apply date filters
+    if date_from:
+        statement = statement.where(Task.created_at >= date_from)
+    if date_to:
+        statement = statement.where(Task.created_at <= date_to)
+
+    statement = statement.order_by(Task.created_at.desc())  # Order by newest first
+
     result = await session.execute(statement)
     return list(result.scalars().all())
 
@@ -67,6 +102,7 @@ async def get_task(
     session: AsyncSession,
     task_id: int,
     user_id: str,
+    include_deleted: bool = False,
 ) -> Task | None:
     """
     Get a single task by ID, ensuring ownership.
@@ -75,6 +111,7 @@ async def get_task(
         session: Async database session
         task_id: Task ID to retrieve
         user_id: Owning user's UUID (from JWT sub claim)
+        include_deleted: Whether to include soft-deleted tasks
 
     Returns:
         Task if found and owned by user, None otherwise
@@ -83,7 +120,11 @@ async def get_task(
     if task_id <= 0:
         return None
 
-    statement = select(Task).where((Task.id == task_id) & (Task.user_id == user_id))
+    if include_deleted:
+        statement = select(Task).where((Task.id == task_id) & (Task.user_id == user_id))
+    else:
+        statement = select(Task).where((Task.id == task_id) & (Task.user_id == user_id) & (Task.is_deleted == False))
+
     result = await session.execute(statement)
     return result.scalar_one_or_none()
 
@@ -204,6 +245,7 @@ async def delete_task(
     session: AsyncSession,
     task_id: int,
     user_id: str,
+    permanent: bool = False,  # If True, performs hard delete
 ) -> bool:
     """
     Delete a task, ensuring ownership.
@@ -212,6 +254,7 @@ async def delete_task(
         session: Async database session
         task_id: Task ID to delete
         user_id: Owning user's UUID
+        permanent: If True, performs hard delete; if False, performs soft delete
 
     Returns:
         True if task was deleted, False if not found
@@ -220,15 +263,76 @@ async def delete_task(
     if task_id <= 0:
         return False
 
-    task = await get_task(session, task_id, user_id)
+    task = await get_task(session, task_id, user_id, include_deleted=True)
     if task is None:
         return False
 
-    # Log the deletion operation before deletion
+    if permanent:
+        # Hard delete - remove completely from database
+        # Log the deletion operation before deletion
+        logger.info(
+            f"Task permanently deleted: task_id={task_id}, user_id={user_id}, " f"title='{task.title}'"
+        )
+
+        # Explicitly delete related notifications first to handle databases without cascade support
+        from sqlalchemy import delete
+        from src.models.notification import Notification
+
+        await session.execute(delete(Notification).where(Notification.task_id == task_id))
+
+        await session.delete(task)
+        await session.commit()
+        return True
+    else:
+        # Soft delete - mark as deleted but keep in database
+        task.is_deleted = True
+        task.deleted_at = datetime.now()
+        task.updated_at = datetime.now()
+
+        # Log the soft deletion operation
+        logger.info(
+            f"Task soft deleted: task_id={task_id}, user_id={user_id}, " f"title='{task.title}'"
+        )
+
+        await session.commit()
+        await session.refresh(task)
+        return True
+
+
+async def restore_task(
+    session: AsyncSession,
+    task_id: int,
+    user_id: str,
+) -> bool:
+    """
+    Restore a soft-deleted task.
+
+    Args:
+        session: Async database session
+        task_id: Task ID to restore
+        user_id: Owning user's UUID
+
+    Returns:
+        True if task was restored, False if not found or not deleted
+    """
+    # Validate task_id is positive
+    if task_id <= 0:
+        return False
+
+    # Get the task including soft-deleted ones
+    task = await get_task(session, task_id, user_id, include_deleted=True)
+    if task is None or not task.is_deleted:
+        return False
+
+    # Restore the task
+    task.is_deleted = False
+    task.deleted_at = None
+    task.updated_at = datetime.now()
+
     logger.info(
-        f"Task deleted: task_id={task_id}, user_id={user_id}, " f"title='{task.title}'"
+        f"Task restored: task_id={task_id}, user_id={user_id}, " f"title='{task.title}'"
     )
 
-    await session.delete(task)
     await session.commit()
+    await session.refresh(task)
     return True

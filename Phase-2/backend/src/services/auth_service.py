@@ -1,11 +1,13 @@
 """Authentication service for JWT verification and user management."""
 
 from typing import Any
+from datetime import datetime, timedelta, timezone
 import bcrypt
+import jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.middleware.auth import _verify_hs256
+from src.config import settings
 from src.models.user import User
 
 
@@ -21,6 +23,29 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 
+
+def create_access_token(user_id: str) -> str:
+    """
+    Create a new JWT access token.
+
+    Args:
+        user_id: The user ID to encode in the sub claim.
+
+    Returns:
+        Encoded JWT string.
+    """
+    expire = datetime.now(timezone.utc) + timedelta(minutes=60 * 24)  # 24 hours
+    to_encode = {
+        "sub": user_id,
+        "exp": expire,
+        "iat": datetime.now(timezone.utc),
+    }
+    encoded_jwt = jwt.encode(
+        to_encode, settings.better_auth_secret, algorithm="HS256"
+    )
+    return encoded_jwt
+
+
 def verify_jwt_token(token: str) -> str:
     """
     Verify JWT token and extract user_id from sub claim.
@@ -34,8 +59,31 @@ def verify_jwt_token(token: str) -> str:
     Raises:
         HTTPException: If token is invalid, expired, or missing sub claim
     """
-    payload: dict[str, Any] = _verify_hs256(token)
-    return payload["sub"]
+    try:
+        payload = jwt.decode(
+            token,
+            settings.better_auth_secret,
+            algorithms=["HS256"],
+            options={"verify_exp": True},
+        )
+    except jwt.InvalidTokenError:
+        from fastapi import HTTPException, status  # Import inside to avoid circular deps if any
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="INVALID_TOKEN",
+        )
+
+    sub = payload.get("sub")
+    if not isinstance(sub, str) or not sub:
+        from fastapi import HTTPException, status
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="INVALID_TOKEN",
+        )
+
+    return sub
 
 
 async def get_or_create_user(
