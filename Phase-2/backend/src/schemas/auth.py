@@ -8,6 +8,7 @@ from pydantic import BaseModel, EmailStr, Field
 class SignupRequest(BaseModel):
     """Request body for user registration."""
 
+    name: str = Field(..., min_length=2, max_length=50, description="User full name")
     email: EmailStr = Field(..., description="User email address")
     password: str = Field(
         ..., min_length=8, description="User password (min 8 characters)"
@@ -25,7 +26,9 @@ class UserResponse(BaseModel):
     """Response model for user data (excluding sensitive fields)."""
 
     id: str = Field(..., description="User UUID from Better Auth sub claim")
+    name: str = Field(..., description="User full name")
     email: str = Field(..., description="User email address")
+    profile_photo_url: str | None = Field(None, description="User profile photo URL")
     created_at: datetime = Field(..., description="Account creation timestamp")
 
     class Config:

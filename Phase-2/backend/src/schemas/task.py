@@ -29,6 +29,8 @@ class TaskResponse(BaseModel):
     title: str = Field(..., description="Task title")
     description: str | None = Field(default=None, description="Task description")
     completed: bool = Field(default=False, description="Completion status")
+    is_deleted: bool = Field(default=False, description="Whether the task is soft-deleted")
+    deleted_at: datetime | None = Field(default=None, description="When the task was soft-deleted")
     created_at: datetime = Field(..., description="Task creation timestamp")
     updated_at: datetime = Field(..., description="Last modification timestamp")
 

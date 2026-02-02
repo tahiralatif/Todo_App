@@ -7,6 +7,12 @@ class Settings(BaseSettings):
     debug: bool = False
     allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     allowed_hosts: str = "*"
+    
+    # Supabase Storage Settings (Free)
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    supabase_service_role_key: str = ""
+    supabase_storage_bucket: str = "profile-photos"
 
     model_config = SettingsConfigDict(
         env_file=".env",

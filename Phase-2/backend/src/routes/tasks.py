@@ -1,8 +1,9 @@
 """Task routes for CRUD endpoints."""
 
-from typing import List
+from datetime import datetime
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import get_session
@@ -23,6 +24,8 @@ from src.services.task_service import (
     toggle_complete,
     update_task,
 )
+from src.services.notification_service import NotificationService
+from src.models.notification import NotificationType
 
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -32,14 +35,32 @@ router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 async def list_tasks(
     user=Depends(require_user),
     session: AsyncSession = Depends(get_session),
+    status: Optional[str] = Query(None, description="Filter by status: 'all', 'pending', 'completed', 'deleted'"),
+    date_from: Optional[datetime] = Query(None, description="Filter tasks created after this date (ISO format)"),
+    date_to: Optional[datetime] = Query(None, description="Filter tasks created before this date (ISO format)"),
+    include_deleted: bool = Query(False, description="Include soft-deleted tasks in the results"),
 ) -> List[TaskResponse]:
     """
-    List all tasks for the authenticated user.
+    List tasks for the authenticated user with optional filtering.
 
     Returns only tasks owned by the authenticated user (user isolation).
-    Per MVP: no filtering, sorting, or pagination.
+    Supports filtering by status, date range, and inclusion of deleted tasks.
     """
-    tasks = await get_user_tasks(session, user.user_id)
+    print(f"DEBUG: Listing tasks for user: {user.user_id}")
+
+    # Convert status to lowercase for comparison
+    normalized_status = status.lower() if status else None
+
+    tasks = await get_user_tasks(
+        session=session,
+        user_id=user.user_id,
+        status=normalized_status,
+        date_from=date_from,
+        date_to=date_to,
+        include_deleted=include_deleted
+    )
+
+    print(f"DEBUG: Found {len(tasks)} tasks for user {user.user_id}")
     return [
         TaskResponse(
             id=task.id,
@@ -57,6 +78,7 @@ async def list_tasks(
 @router.get("/{task_id}", response_model=TaskResponse)
 async def get_single_task(
     task_id: int,
+    include_deleted: bool = Query(False, description="Include soft-deleted tasks"),
     user=Depends(require_user),
     session: AsyncSession = Depends(get_session),
 ) -> TaskResponse:
@@ -66,7 +88,7 @@ async def get_single_task(
     Returns 403 if task belongs to another user.
     Returns 404 if task does not exist.
     """
-    task = await get_task(session, task_id, user.user_id)
+    task = await get_task(session, task_id, user.user_id, include_deleted=include_deleted)
 
     if task is None:
         # Check if task exists but belongs to different user
@@ -112,6 +134,14 @@ async def create_new_task(
         user_id=user.user_id,
         title=request.title,
         description=request.description,
+    )
+
+    # Create notification for task creation
+    await NotificationService.create_task_notification(
+        session=session,
+        user_id=user.user_id,
+        task=task,
+        notification_type=NotificationType.TASK_CREATED,
     )
 
     return TaskResponse(
@@ -165,6 +195,14 @@ async def update_full_task(
             detail=RESOURCE_NOT_FOUND,
         )
 
+    # Create notification for task update
+    await NotificationService.create_task_notification(
+        session=session,
+        user_id=user.user_id,
+        task=task,
+        notification_type=NotificationType.TASK_UPDATED,
+    )
+
     return TaskResponse(
         id=task.id,
         user_id=task.user_id,
@@ -216,6 +254,14 @@ async def update_partial_task(
             detail=RESOURCE_NOT_FOUND,
         )
 
+    # Create notification for task update
+    await NotificationService.create_task_notification(
+        session=session,
+        user_id=user.user_id,
+        task=task,
+        notification_type=NotificationType.TASK_UPDATED,
+    )
+
     return TaskResponse(
         id=task.id,
         user_id=task.user_id,
@@ -263,6 +309,18 @@ async def toggle_task_complete(
             detail=RESOURCE_NOT_FOUND,
         )
 
+    # Create notification for task completion status change
+    notification_type = (
+        NotificationType.TASK_COMPLETED if request.completed 
+        else NotificationType.TASK_PENDING
+    )
+    await NotificationService.create_task_notification(
+        session=session,
+        user_id=user.user_id,
+        task=task,
+        notification_type=notification_type,
+    )
+
     return TaskResponse(
         id=task.id,
         user_id=task.user_id,
@@ -277,6 +335,7 @@ async def toggle_task_complete(
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_existing_task(
     task_id: int,
+    permanent: bool = Query(False, description="If True, permanently deletes the task; if False, soft deletes"),
     user=Depends(require_user),
     session: AsyncSession = Depends(get_session),
 ) -> None:
@@ -286,14 +345,14 @@ async def delete_existing_task(
     Returns 204 No Content on success.
     Returns 403 if task belongs to another user.
     Returns 404 if task does not exist.
-    """
-    success = await delete_task(
-        session=session,
-        task_id=task_id,
-        user_id=user.user_id,
-    )
 
-    if not success:
+    By default, performs soft delete (marks as deleted but keeps in database).
+    Use permanent=true to permanently delete the task.
+    """
+    # Get task before deletion for notification (including soft-deleted ones)
+    task = await get_task(session, task_id, user.user_id, include_deleted=True)
+
+    if task is None:
         # Check if task exists but belongs to different user
         from sqlalchemy import select
         from src.models.task import Task
@@ -308,3 +367,102 @@ async def delete_existing_task(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=RESOURCE_NOT_FOUND,
         )
+
+    # Create notification before deletion
+    await NotificationService.create_task_notification(
+        session=session,
+        user_id=user.user_id,
+        task=task,
+        notification_type=NotificationType.TASK_DELETED,
+    )
+
+    success = await delete_task(
+        session=session,
+        task_id=task_id,
+        user_id=user.user_id,
+        permanent=permanent,
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=RESOURCE_NOT_FOUND,
+        )
+
+
+@router.post("/{task_id}/restore", response_model=TaskResponse)
+async def restore_deleted_task(
+    task_id: int,
+    user=Depends(require_user),
+    session: AsyncSession = Depends(get_session),
+) -> TaskResponse:
+    """
+    Restore a soft-deleted task.
+
+    Returns the restored task on success.
+    Returns 403 if task belongs to another user.
+    Returns 404 if task does not exist or is not deleted.
+    """
+    # Get task to verify it exists and belongs to user (including soft-deleted ones)
+    task = await get_task(session, task_id, user.user_id, include_deleted=True)
+
+    if task is None:
+        # Check if task exists but belongs to different user
+        from sqlalchemy import select
+        from src.models.task import Task
+
+        existing = await session.execute(select(Task).where(Task.id == task_id))
+        if existing.scalar_one_or_none() is not None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=FORBIDDEN,
+            )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=RESOURCE_NOT_FOUND,
+        )
+
+    # Check if task is actually deleted
+    if not task.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Task is not deleted and cannot be restored",
+        )
+
+    success = await restore_task(
+        session=session,
+        task_id=task_id,
+        user_id=user.user_id,
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=RESOURCE_NOT_FOUND,
+        )
+
+    # Refresh task to get updated data
+    refreshed_task = await get_task(session, task_id, user.user_id)
+    if not refreshed_task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=RESOURCE_NOT_FOUND,
+        )
+
+    # Create notification for restoration
+    await NotificationService.create_task_notification(
+        session=session,
+        user_id=user.user_id,
+        task=refreshed_task,
+        notification_type=NotificationType.TASK_CREATED,  # Using CREATED for restoration
+    )
+
+    return TaskResponse(
+        id=refreshed_task.id,
+        user_id=refreshed_task.user_id,
+        title=refreshed_task.title,
+        description=refreshed_task.description,
+        completed=refreshed_task.completed,
+        created_at=refreshed_task.created_at,
+        updated_at=refreshed_task.updated_at,
+    )
