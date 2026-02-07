@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, ReactNode } from 'react';
 import { FixedSizeList as List, ListOnScrollProps } from 'react-window';
 
 interface VirtualizedListHookProps<T> {
@@ -21,7 +21,7 @@ export const useVirtualizedList = <T,>({
   }, []);
 
   const VirtualizedListComponent = useCallback(
-    ({ renderItem }: { renderItem: (item: T, index: number) => React.ReactNode }) => (
+    ({ renderItem }: { renderItem: (item: T, index: number) => ReactNode }) => (
       <List
         height={containerHeight}
         itemCount={items.length}
