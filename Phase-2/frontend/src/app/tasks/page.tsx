@@ -58,21 +58,15 @@ const TasksPage = () => {
 
   // Component mapping for views
   const renderCurrentView = () => {
-    const commonProps = {
-      selectedTasks,
-      onTaskSelect: handleTaskSelect,
-      onSelectAll: handleSelectAll,
-    };
-
     switch (currentView) {
       case 'list':
-        return <ListView {...commonProps} />;
+        return <ListView selectedTasks={selectedTasks} onTaskSelect={handleTaskSelect} onSelectAll={handleSelectAll} />;
       case 'kanban':
-        return <KanbanView {...commonProps} />;
+        return <KanbanView />;
       case 'timeline':
-        return <TimelineView {...commonProps} />;
+        return <TimelineView />;
       default:
-        return <ListView {...commonProps} />;
+        return <ListView selectedTasks={selectedTasks} onTaskSelect={handleTaskSelect} onSelectAll={handleSelectAll} />;
     }
   };
 

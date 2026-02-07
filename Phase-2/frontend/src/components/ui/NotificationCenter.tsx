@@ -6,7 +6,7 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/services/api-client';
 import { GlassCard } from './GlassCard';
-import { LoadingSpinner } from './LoadingSpinner';
+import LoadingSpinner from './LoadingSpinner';
 
 interface NotificationItem {
   id: number;

@@ -191,6 +191,18 @@ class ApiClient {
     return this.request(endpoint);
   }
 
+  async markNotificationAsRead(notificationId: number): Promise<any> {
+    return this.request(`/api/notifications/${notificationId}/read`, {
+      method: 'PATCH',
+    });
+  }
+
+  async markAllNotificationsAsRead(): Promise<any> {
+    return this.request('/api/notifications/read-all', {
+      method: 'PATCH',
+    });
+  }
+
   // File upload methods
   async uploadProfilePhoto(file: File): Promise<any> {
     const formData = new FormData();
@@ -225,13 +237,16 @@ export const simpleApiClient = {
   async request(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseUrl}${endpoint}`;
 
+    const authHeaders = this.getAuthHeaders();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(authHeaders as Record<string, string>),
+      ...((options.headers || {}) as Record<string, string>),
+    };
+
     const config: RequestInit = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...this.getAuthHeaders(),
-        ...options.headers,
-      },
       ...options,
+      headers,
     };
 
     const response = await fetch(url, config);

@@ -103,7 +103,7 @@ export const useTaskStore = create<TaskState>()(
 
         return filteredTasks;
       },
-    })),
+    }),
     {
       name: 'task-storage',
     }

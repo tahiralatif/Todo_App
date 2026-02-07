@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/services/api-client';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 const ProfilePhotoUpload: React.FC = () => {
   const { user, updateProfile } = useAuth();
@@ -58,7 +58,7 @@ const ProfilePhotoUpload: React.FC = () => {
 
     try {
       await apiClient.deleteProfilePhoto();
-      await updateProfile({ profile_photo_url: null });
+      await updateProfile({ profile_photo_url: undefined });
       setSuccess('Profile photo removed successfully!');
     } catch (err: any) {
       setError(err.message || 'Failed to remove profile photo');

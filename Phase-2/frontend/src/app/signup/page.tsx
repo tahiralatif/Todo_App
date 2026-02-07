@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import MainCanvas from '@/components/layout/MainCanvas';
 
 const SignupPage: React.FC = () => {
