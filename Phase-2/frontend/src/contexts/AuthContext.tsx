@@ -52,10 +52,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initializeAuth = async () => {
       try {
         const accessToken = localStorage.getItem('access_token');
-        const refreshToken = localStorage.getItem('refresh_token');
+        const refreshTokenValue = localStorage.getItem('refresh_token');
 
-        if (accessToken && refreshToken) {
-          setTokens({ token: accessToken, refresh_token: refreshToken });
+        if (accessToken && refreshTokenValue) {
+          setTokens({ token: accessToken, refresh_token: refreshTokenValue });
 
           // Try to get user profile
           try {
@@ -155,12 +155,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshToken = async () => {
     try {
-      const refreshToken = localStorage.getItem('refresh_token');
-      if (!refreshToken) {
+      const refreshTokenValue = localStorage.getItem('refresh_token');
+      if (!refreshTokenValue) {
         throw new Error('No refresh token available');
       }
 
-      const response = await apiClient.refreshToken(refreshToken);
+      const response = await apiClient.refreshToken(refreshTokenValue) as { token: string; refresh_token: string };
 
       const newTokens: AuthTokens = {
         token: response.token,

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '@/services/api-client';
 import { GlassCard } from '@/components/ui/GlassCard';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 interface BulkOperationsProps {
   selectedTasks: number[];

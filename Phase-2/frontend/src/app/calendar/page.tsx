@@ -56,7 +56,7 @@ const CalendarPage = () => {
 
   const handleTaskUpdate = async (taskId: number, updates: any) => {
     try {
-      await apiClient.patchTask(taskId, updates);
+      await apiClient.patchTask(String(taskId), updates);
       await loadTasks(); // Reload tasks after update
     } catch (error) {
       console.error('Failed to update task:', error);

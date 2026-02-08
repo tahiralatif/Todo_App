@@ -3,10 +3,10 @@
 /**
  * Dynamic import helper with error boundary and loading state
  */
-export const dynamicImport = async <T,>(
+export async function dynamicImport<T>(
   importFn: () => Promise<T>,
   retries: number = 3
-): Promise<T> => {
+): Promise<T> {
   for (let i = 0; i < retries; i++) {
     try {
       return await importFn();
@@ -205,8 +205,13 @@ export class DataCompressor {
           offset += chunk.length;
         }
 
-        // Convert to base64
-        return btoa(String.fromCharCode(...combined));
+        // Convert to base64 using a method that works without downlevelIteration
+        let binary = '';
+        const bytes = combined as unknown as number[];
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
       } else {
         // Fallback to simple stringification
         return JSON.stringify(data);

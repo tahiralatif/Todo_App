@@ -43,7 +43,7 @@ export function throttle<T extends (...args: any[]) => any>(
 export function memoize<T extends (...args: any[]) => any>(func: T): T {
   const cache = new Map<string, ReturnType<T>>();
 
-  return function (...args: Parameters<T>): ReturnType<T> {
+  return function (this: unknown, ...args: Parameters<T>): ReturnType<T> {
     const key = JSON.stringify(args);
 
     if (cache.has(key)) {
@@ -146,8 +146,8 @@ export class MemoryManager {
   /**
    * Get current memory usage (when available)
    */
-  static getMemoryInfo(): PerformanceMemory | null {
-    if (MemoryManager.supportsMemoryPressure()) {
+  static getMemoryInfo(): { usedJSHeapSize: number; totalJSHeapSize: number; jsHeapSizeLimit: number } | null {
+    if ('memory' in performance) {
       return (performance as any).memory;
     }
     return null;

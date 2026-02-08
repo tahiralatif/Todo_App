@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { FixedSizeList as List } from 'react-window';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const List = require('react-window').FixedSizeList;
 import { useTaskStore } from '@/services/state/store';
 import TaskCard from './TaskCard';
 
