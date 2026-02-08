@@ -1,0 +1,86 @@
+[project]
+name = "phase-3-ai-chatbot"
+version = "0.1.0"
+description = "Phase-3 AI-Powered Todo Chatbot Backend"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "sqlmodel>=0.0.21",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.29.0",
+    "aiosqlite>=0.20.0",
+    "email-validator>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-multipart>=0.0.9",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "black>=24.0.0",
+    "flake8>=7.0.0",
+    "mypy>=1.8.0",
+    "bcrypt>=4.0.0",
+    "pyjwt>=2.8.0",
+    "psycopg2-binary>=2.9.11",
+    "httpx>=0.27.0",
+    "pillow>=10.0.0",
+    "supabase>=2.0.0",
+    "supabase-py>=2.0.0",
+    "agents>=0.1.0",
+    "openai>=1.12.0",
+    "mcp-server>=0.1.0",
+    "better-auth>=0.0.0",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.0",
+    "python-dotenv>=1.0.0",
+]
+
+# Phase-1 CLI dependencies retained as an optional extra because the CLI entrypoint
+# is preserved at src/cli_main.py and still imports Rich/Questionary.
+[project.optional-dependencies]
+cli = [
+    "rich>=13.0.0",
+    "questionary>=2.0.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+# Exclude legacy Phase-1 CLI + old storage modules (kept temporarily).
+# Black matches against POSIX-style paths.
+exclude = "(/\\.venv/|/backend/src/ui/|/backend/src/cli_main\\.py$|/backend/src/services/task_manager\\.py$|/backend/tests/)"
+
+# Note: flake8 doesn't reliably read pyproject.toml without plugins.
+# Runtime config lives in backend/.flake8.
+
+[tool.mypy]
+python_version = "3.13"
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+no_implicit_optional = true
+check_untyped_defs = true
+warn_unused_configs = true
+show_error_codes = true
+pretty = true
+
+# Third-party libs may not ship type hints.
+ignore_missing_imports = true
+
+# Exclude legacy Phase-1 CLI + old storage modules (kept temporarily).
+# Match both / and \\ path separators (Windows).
+exclude = "(^backend[\\\\/]+src[\\\\/]+ui[\\\\/]|^backend[\\\\/]+src[\\\\/]+cli_main\\.py$|^backend[\\\\/]+src[\\\\/]+services[\\\\/]+task_manager\\.py$|^backend[\\\\/]+tests[\\\\/])"
+
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = ["backend/src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -92,8 +92,3 @@ def should_log_request(path: str) -> bool:
     """
     skip_paths = ["/health", "/docs", "/redoc", "/openapi.json", "/uploads"]
     return not any(path.startswith(skip_path) for skip_path in skip_paths)
-
-
-def install_logging_middleware(app):
-    """Install request logging middleware on the FastAPI app."""
-    app.add_middleware(RequestLoggingMiddleware)
