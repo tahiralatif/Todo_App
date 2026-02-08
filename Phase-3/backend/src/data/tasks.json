@@ -1,0 +1,33 @@
+{
+  "next_id": 4,
+  "tasks": [
+    {
+      "id": 1,
+      "title": "shopping",
+      "description": "dresses, shoes",
+      "completed": true,
+      "created_at": "2026-01-02T07:02:01.082879"
+    },
+    {
+      "id": 2,
+      "title": "testing",
+      "description": "testing code",
+      "completed": false,
+      "created_at": "2026-01-02T07:02:29.037515"
+    },
+    {
+      "id": 3,
+      "title": "new task",
+      "description": "my new task",
+      "completed": true,
+      "created_at": "2026-01-05T19:54:07.458735"
+    },
+    {
+      "id": 4,
+      "title": "Buy groceries",
+      "description": "Milk, eggs, bread",
+      "completed": false,
+      "created_at": "2026-01-02T06:40:59.249760"
+    }
+  ]
+}

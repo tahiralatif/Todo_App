@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from src.config import settings
 from src.db import init_db
 from src.middleware.errors import install_error_handlers
+from src.middleware.logging_middleware import install_logging_middleware
 from src.routes.auth import router as auth_router
 from src.routes.tasks import router as tasks_router
 from src.routes.notifications import router as notifications_router
@@ -77,6 +78,7 @@ app.add_middleware(
 )
 
 install_error_handlers(app)
+install_logging_middleware(app)
 
 
 @app.on_event("startup")
