@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from sqlmodel import Field, Relationship, SQLModel
+from sqlalchemy.orm import Mapped, relationship
 
 if TYPE_CHECKING:
     from .user import User
@@ -27,7 +28,7 @@ class Task(SQLModel, table=True):
     user: User = Relationship(back_populates="tasks")
 
     # Relationship to notifications
-    notifications: list["Notification"] = Relationship(
+    notifications: List["Notification"] = Relationship(
         back_populates="task",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "lazy": "select"},
     )
