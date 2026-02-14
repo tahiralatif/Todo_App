@@ -4,8 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.main import app
-from src.models.task import Task
-from src.models.user import User
+from src.models.user import Task, User
 
 
 def test_cross_user_task_access_forbidden_403():

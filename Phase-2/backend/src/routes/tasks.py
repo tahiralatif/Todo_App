@@ -25,7 +25,7 @@ from src.services.task_service import (
     update_task,
 )
 from src.services.notification_service import NotificationService
-from src.models.notification import NotificationType
+from src.models.user import Task, NotificationType
 
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -93,8 +93,6 @@ async def get_single_task(
     if task is None:
         # Check if task exists but belongs to different user
         from sqlalchemy import select
-        from src.models.task import Task
-
         existing = await session.execute(select(Task).where(Task.id == task_id))
         if existing.scalar_one_or_none() is not None:
             raise HTTPException(
@@ -182,8 +180,6 @@ async def update_full_task(
 
     if task is None:
         from sqlalchemy import select
-        from src.models.task import Task
-
         existing = await session.execute(select(Task).where(Task.id == task_id))
         if existing.scalar_one_or_none() is not None:
             raise HTTPException(
@@ -241,8 +237,6 @@ async def update_partial_task(
 
     if task is None:
         from sqlalchemy import select
-        from src.models.task import Task
-
         existing = await session.execute(select(Task).where(Task.id == task_id))
         if existing.scalar_one_or_none() is not None:
             raise HTTPException(
@@ -296,8 +290,6 @@ async def toggle_task_complete(
 
     if task is None:
         from sqlalchemy import select
-        from src.models.task import Task
-
         existing = await session.execute(select(Task).where(Task.id == task_id))
         if existing.scalar_one_or_none() is not None:
             raise HTTPException(
@@ -355,8 +347,6 @@ async def delete_existing_task(
     if task is None:
         # Check if task exists but belongs to different user
         from sqlalchemy import select
-        from src.models.task import Task
-
         existing = await session.execute(select(Task).where(Task.id == task_id))
         if existing.scalar_one_or_none() is not None:
             raise HTTPException(
@@ -409,8 +399,6 @@ async def restore_deleted_task(
     if task is None:
         # Check if task exists but belongs to different user
         from sqlalchemy import select
-        from src.models.task import Task
-
         existing = await session.execute(select(Task).where(Task.id == task_id))
         if existing.scalar_one_or_none() is not None:
             raise HTTPException(
@@ -429,10 +417,11 @@ async def restore_deleted_task(
             detail="Task is not deleted and cannot be restored",
         )
 
-    success = await restore_task(
+    success = await update_task(
         session=session,
         task_id=task_id,
         user_id=user.user_id,
+        is_deleted=False,
     )
 
     if not success:

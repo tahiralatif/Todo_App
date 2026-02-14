@@ -1,12 +1,28 @@
 """FastAPI application entry point (Phase-2 Backend Evolution)."""
 
+import logging
+import sys
+
+from src.config import settings
+
+# Configure logging for better visibility
+logging.basicConfig(
+    level=logging.DEBUG if settings.debug else logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.security import HTTPBearer
 from fastapi.staticfiles import StaticFiles
 
-from src.config import settings
 from src.db import init_db
 from src.middleware.errors import install_error_handlers
 from src.middleware.logging_middleware import install_logging_middleware
@@ -14,11 +30,10 @@ from src.routes.auth import router as auth_router
 from src.routes.tasks import router as tasks_router
 from src.routes.notifications import router as notifications_router
 from src.routes.profile import router as profile_router
+from src.services.supabase_storage_service import get_supabase_storage_service
 
 # Ensure models are imported so SQLModel metadata includes tables
-from src.models.task import Task  # noqa: F401
-from src.models.user import User  # noqa: F401
-from src.models.notification import Notification  # noqa: F401
+from src.models import User, Task, Notification  # noqa: F401
 
 
 app = FastAPI(
@@ -83,18 +98,19 @@ install_logging_middleware(app)
 
 @app.on_event("startup")
 async def on_startup() -> None:
+    logger.info("Starting Todo App Backend...")
     await init_db()
+    logger.info("Database initialized successfully")
     # Test cloud storage connection
-    try:
-        from src.services.supabase_storage_service import get_supabase_storage_service
+    try:       
         storage_service = get_supabase_storage_service()
         if await storage_service.test_connection():
-            print("Cloud storage connection successful")
+            logger.info("Cloud storage connection successful")
         else:
-            print("Cloud storage connection failed - check your configuration")
+            logger.warning("Cloud storage connection failed - check your configuration")
     except Exception as e:
-        print(f"Cloud storage not configured: {e}")
-        print("Profile photo uploads will not work until cloud storage is configured")
+        logger.warning(f"Cloud storage not configured: {e}")
+        logger.info("Profile photo uploads will not work until cloud storage is configured")
 
 
 @app.get("/health")

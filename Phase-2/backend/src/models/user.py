@@ -1,12 +1,22 @@
-
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import List, Optional
+from enum import Enum
 
-from sqlmodel import Field, Relationship, SQLModel
+from sqlmodel import Field, Relationship, SQLModel, Column
+from sqlalchemy import Enum as SQLEnum
 
-if TYPE_CHECKING:
-    from .task import Task
-    from .notification import Notification
+
+class NotificationTypeEnum(str, Enum):
+    """Notification type enumeration matching database ENUM."""
+    TASK_CREATED = "TASK_CREATED"
+    TASK_UPDATED = "TASK_UPDATED"
+    TASK_DELETED = "TASK_DELETED"
+    TASK_COMPLETED = "TASK_COMPLETED"
+    TASK_PENDING = "TASK_PENDING"
+    LOGIN = "LOGIN"
+    LOGOUT = "LOGOUT"
+    PROFILE_UPDATED = "PROFILE_UPDATED"
+    SIGNUP = "SIGNUP"
 
 
 class User(SQLModel, table=True):
@@ -16,24 +26,79 @@ class User(SQLModel, table=True):
     name: str = Field(sa_column_kwargs={"nullable": False})
     email: str = Field(unique=True, index=True)
     hashed_password: str = Field(sa_column_kwargs={"nullable": False})
-    profile_photo_url: str | None = Field(default=None, max_length=500)
-    bio: str | None = Field(default=None, max_length=500)
-    last_name: str | None = Field(default=None, max_length=100)
-    date_of_birth: datetime | None = Field(default=None)
-    address: str | None = Field(default=None, max_length=500)
-    phone_number: str | None = Field(default=None, max_length=20)
-    gender: str | None = Field(default=None, max_length=20)
+    
+    # Profile fields
+    first_name: Optional[str] = Field(default=None, max_length=100)
+    last_name: Optional[str] = Field(default=None, max_length=100)
+    phone: Optional[str] = Field(default=None, max_length=20)
+    date_of_birth: Optional[datetime] = Field(default=None)
+    gender: Optional[str] = Field(default=None, max_length=20)
+    address: Optional[str] = Field(default=None)
+    city: Optional[str] = Field(default=None, max_length=100)
+    country: Optional[str] = Field(default=None, max_length=100)
+    profile_photo_url: Optional[str] = Field(default=None)
+    bio: Optional[str] = Field(default=None)
+    
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
 
-    # Relationship to tasks with cascade delete
-    tasks: list["Task"] = Relationship(
-        back_populates="user",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan", "lazy": "select"},
-    )
+    # Relationships
+    tasks: List["Task"] = Relationship(back_populates="user")
+    notifications: List["Notification"] = Relationship(back_populates="user")
 
-    # Relationship to notifications
-    notifications: list["Notification"] = Relationship(
-        back_populates="user",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan", "lazy": "select"},
+
+class Task(SQLModel, table=True):
+    __tablename__ = "tasks"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(foreign_key="users.id", index=True, nullable=False)
+    title: str = Field(max_length=200)
+    description: Optional[str] = Field(default=None, max_length=1000)
+    completed: bool = Field(default=False, index=True)
+    is_deleted: bool = Field(default=False, index=True)
+    deleted_at: Optional[datetime] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+    # Relationships
+    user: Optional["User"] = Relationship(back_populates="tasks")
+    notifications: List["Notification"] = Relationship(back_populates="task")
+
+
+class NotificationType:
+    TASK_CREATED = "TASK_CREATED"
+    TASK_UPDATED = "TASK_UPDATED"
+    TASK_DELETED = "TASK_DELETED"
+    TASK_COMPLETED = "TASK_COMPLETED"
+    TASK_PENDING = "TASK_PENDING"
+    LOGIN = "LOGIN"
+    LOGOUT = "LOGOUT"
+    PROFILE_UPDATED = "PROFILE_UPDATED"
+    SIGNUP = "SIGNUP"
+
+
+class Notification(SQLModel, table=True):
+    __tablename__ = "notifications"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(foreign_key="users.id", index=True, nullable=False)
+    type: str = Field(
+        sa_column=Column(
+            SQLEnum(
+                NotificationTypeEnum,
+                name="notificationtype",
+                create_type=False,  # Don't create, use existing ENUM
+                native_enum=True
+            ),
+            nullable=False
+        )
     )
+    title: str = Field(max_length=200)
+    message: str = Field(max_length=1000)
+    is_read: bool = Field(default=False, index=True)
+    created_at: datetime = Field(default_factory=datetime.now)
+    task_id: Optional[int] = Field(default=None, foreign_key="tasks.id")
+
+    # Relationships
+    user: Optional["User"] = Relationship(back_populates="notifications")
+    task: Optional["Task"] = Relationship(back_populates="notifications")

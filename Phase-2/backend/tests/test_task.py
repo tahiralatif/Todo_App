@@ -3,7 +3,7 @@
 import pytest
 from datetime import datetime
 
-from src.models.task import Task
+from src.models.user import Task
 
 
 class TestTaskInitialization:

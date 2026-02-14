@@ -1,18 +1,27 @@
-from __future__ import annotations
-
 from datetime import datetime
 from typing import List
-from enum import Enum
 
 from pydantic import BaseModel
 
-from src.models.notification import NotificationType
+
+# Notification type constants
+NOTIFICATION_TYPES = {
+    "TASK_CREATED",
+    "TASK_UPDATED",
+    "TASK_DELETED",
+    "TASK_COMPLETED",
+    "TASK_PENDING",
+    "LOGIN",
+    "LOGOUT",
+    "PROFILE_UPDATED",
+    "SIGNUP",
+}
 
 
 class NotificationResponse(BaseModel):
     id: int
     user_id: str
-    type: NotificationType
+    type: str
     title: str
     message: str
     is_read: bool
@@ -23,7 +32,7 @@ class NotificationResponse(BaseModel):
 
 
 class NotificationCreateRequest(BaseModel):
-    type: NotificationType
+    type: str
     title: str
     message: str
 

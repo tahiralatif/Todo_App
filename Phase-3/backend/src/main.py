@@ -58,21 +58,28 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
-# CORS configuration for production
+# CORS configuration for production - more permissive for development
+CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000", 
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:5173",  # Vite dev server
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins.split(",") if hasattr(settings, 'allowed_origins') and settings.allowed_origins else ["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_methods=["*"],  # Allow all methods including OPTIONS
     allow_headers=["*"],
-    # Expose headers for authentication
-    expose_headers=["Access-Control-Allow-Origin"],
+    expose_headers=["*"],
 )
 
-# Trusted Host Middleware to prevent HTTP Host Header attacks
+# Trusted Host Middleware - permissive for development
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=settings.allowed_hosts.split(",") if hasattr(settings, 'allowed_hosts') and settings.allowed_hosts else ["*"],
+    allowed_hosts=["*"],  # Allow all hosts in development
 )
 
 install_error_handlers(app)
