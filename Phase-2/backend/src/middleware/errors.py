@@ -36,7 +36,13 @@ def error_response(
         "error": {"code": code, "message": message},
     }
     if details is not None:
-        payload["error"] = {"code": code, "message": message, "details": details}
+        # Convert details to string if it's not JSON serializable
+        try:
+            import json
+            details_str = json.dumps(details, default=str)
+        except Exception:
+            details_str = str(details)
+        payload["error"] = {"code": code, "message": message, "details": details_str}
     return JSONResponse(status_code=status_code, content=payload)
 
 
@@ -45,11 +51,20 @@ def install_error_handlers(app) -> None:
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError
     ):
+        # Convert errors to simple format
+        error_list = []
+        for error in exc.errors():
+            error_list.append({
+                "loc": list(error.get("loc", [])),
+                "msg": error.get("msg", ""),
+                "type": error.get("type", ""),
+            })
+        
         return error_response(
             status_code=422,
             code=VALIDATION_ERROR,
             message="Validation error",
-            details=exc.errors(),
+            details=error_list,
         )
 
     @app.exception_handler(HTTPException)
@@ -74,5 +89,5 @@ def install_error_handlers(app) -> None:
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):
         return error_response(
-            status_code=500, code=INTERNAL_ERROR, message="Internal error"
+            status_code=500, code=INTERNAL_ERROR, message=str(exc)
         )

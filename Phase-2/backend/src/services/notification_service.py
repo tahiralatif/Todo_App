@@ -1,14 +1,24 @@
 """Notification service for managing user notifications."""
 
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.notification import Notification, NotificationType
-from src.models.user import User
-from src.models.task import Task
+from src.models.user import User, Task, Notification
+
+
+class NotificationType:
+    TASK_CREATED = "TASK_CREATED"
+    TASK_UPDATED = "TASK_UPDATED"
+    TASK_DELETED = "TASK_DELETED"
+    TASK_COMPLETED = "TASK_COMPLETED"
+    TASK_PENDING = "TASK_PENDING"
+    LOGIN = "LOGIN"
+    LOGOUT = "LOGOUT"
+    PROFILE_UPDATED = "PROFILE_UPDATED"
+    SIGNUP = "SIGNUP"
 
 
 class NotificationService:
@@ -16,10 +26,11 @@ class NotificationService:
     async def create_notification(
         session: AsyncSession,
         user_id: str,
-        notification_type: NotificationType,
+        notification_type: str,
         title: str,
         message: str,
-        task: Task | None = None,
+        task: Optional[Task] = None,
+        auto_commit: bool = True,
     ) -> Notification:
         """
         Create a new notification for a user.
@@ -31,10 +42,12 @@ class NotificationService:
             title: Notification title
             message: Notification message
             task: Associated task (optional)
+            auto_commit: Whether to commit automatically (default True)
 
         Returns:
             Created Notification instance
         """
+        print(f"DEBUG: Creating notification for user {user_id}")
         notification = Notification(
             user_id=user_id,
             type=notification_type,
@@ -43,8 +56,20 @@ class NotificationService:
             task_id=task.id if task else None,
         )
         session.add(notification)
-        await session.commit()
-        await session.refresh(notification)
+        
+        if auto_commit:
+            try:
+                await session.commit()
+                await session.refresh(notification)
+                print(f"DEBUG: Notification created and committed: {notification.id}")
+            except Exception as e:
+                await session.rollback()
+                print(f"ERROR: Notification commit failed: {e}")
+                raise
+        else:
+            await session.flush()
+            print(f"DEBUG: Notification added to session (not committed): {notification.id}")
+        
         return notification
 
     @staticmethod
@@ -52,7 +77,7 @@ class NotificationService:
         session: AsyncSession,
         user_id: str,
         task: Task,
-        notification_type: NotificationType,
+        notification_type: str,
     ) -> Notification:
         """
         Create a task-related notification.
@@ -96,6 +121,7 @@ class NotificationService:
         session: AsyncSession,
         user_id: str,
         user_name: str,
+        auto_commit: bool = True,
     ) -> Notification:
         """
         Create a login notification.
@@ -104,6 +130,7 @@ class NotificationService:
             session: Async database session
             user_id: Target user's UUID
             user_name: User's name
+            auto_commit: Whether to commit automatically (default True)
 
         Returns:
             Created Notification instance
@@ -114,6 +141,7 @@ class NotificationService:
             notification_type=NotificationType.LOGIN,
             title="Login Successful",
             message=f"Welcome back, {user_name}!",
+            auto_commit=auto_commit,
         )
 
     @staticmethod
@@ -174,6 +202,7 @@ class NotificationService:
         session: AsyncSession,
         user_id: str,
         user_name: str,
+        auto_commit: bool = True,
     ) -> Notification:
         """
         Create a signup notification.
@@ -182,6 +211,7 @@ class NotificationService:
             session: Async database session
             user_id: Target user's UUID
             user_name: User's name
+            auto_commit: Whether to commit automatically (default True)
 
         Returns:
             Created Notification instance
@@ -192,6 +222,7 @@ class NotificationService:
             notification_type=NotificationType.SIGNUP,
             title="Account Created",
             message=f"Welcome to the app, {user_name}! Your account has been created.",
+            auto_commit=auto_commit,
         )
 
     @staticmethod

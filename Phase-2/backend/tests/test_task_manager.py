@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.models.task import Task
+from src.models.user import Task
 from src.services.task_manager import TaskManager
 
 

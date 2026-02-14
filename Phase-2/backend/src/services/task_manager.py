@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 from typing import Optional
 
-from src.models.task import Task
+from src.models.user import Task
 
 
 class TaskManager:

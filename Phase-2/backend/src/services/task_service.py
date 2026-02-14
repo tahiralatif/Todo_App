@@ -7,7 +7,7 @@ from typing import List, Optional
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.task import Task
+from src.models.user import Task
 
 # Configure logger for US2 operations
 logger = logging.getLogger(__name__)
@@ -276,7 +276,7 @@ async def delete_task(
 
         # Explicitly delete related notifications first to handle databases without cascade support
         from sqlalchemy import delete
-        from src.models.notification import Notification
+        from src.models.user import Notification
 
         await session.execute(delete(Notification).where(Notification.task_id == task_id))
 

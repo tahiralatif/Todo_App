@@ -12,8 +12,7 @@ from sqlmodel import SQLModel
 
 from src.main import app
 from src.db import get_session
-from src.models.user import User
-from src.models.task import Task
+from src.models.user import User, Task
 
 
 @pytest.fixture(scope="session")
@@ -83,7 +82,7 @@ async def sample_user(test_db_session):
 @pytest_asyncio.fixture
 async def sample_task(test_db_session, sample_user):
     """Create a sample task for testing."""
-    from src.models.task import Task
+    from src.models.user import Task
 
     task = Task(
         user_id=sample_user.id,

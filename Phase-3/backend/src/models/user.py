@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -26,13 +26,13 @@ class User(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.now)
 
     # Relationship to tasks with cascade delete
-    tasks: List["Task"] = Relationship(
+    tasks: list["Task"] = Relationship(
         back_populates="user",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "lazy": "select"},
     )
 
     # Relationship to notifications
-    notifications: List["Notification"] = Relationship(
+    notifications: list["Notification"] = Relationship(
         back_populates="user",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "lazy": "select"},
     )

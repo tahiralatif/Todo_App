@@ -5,8 +5,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.main import app
-from src.models.task import Task
-from src.models.user import User
+from src.models.user import Task, User
 from src.schemas.task import TaskCreate
 
 
