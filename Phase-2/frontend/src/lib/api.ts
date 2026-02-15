@@ -273,6 +273,50 @@ class ApiClient {
     });
     return this.handleResponse(response);
   }
+
+  // Push Notification APIs
+  async subscribeToPush(subscription: PushSubscription) {
+    const subscriptionJSON = subscription.toJSON();
+    const response = await fetch(`${this.baseURL}/api/push/subscribe`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({
+        endpoint: subscriptionJSON.endpoint,
+        keys: {
+          p256dh: subscriptionJSON.keys?.p256dh || '',
+          auth: subscriptionJSON.keys?.auth || '',
+        },
+      }),
+    });
+    return this.handleResponse(response);
+  }
+
+  async unsubscribeFromPush(endpoint: string) {
+    const response = await fetch(`${this.baseURL}/api/push/unsubscribe?endpoint=${encodeURIComponent(endpoint)}`, {
+      method: 'DELETE',
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  async getPushSubscriptions() {
+    const response = await fetch(`${this.baseURL}/api/push/subscriptions`, {
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  async testPushNotification(title?: string, message?: string) {
+    const response = await fetch(`${this.baseURL}/api/push/test`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({
+        title: title || 'Test Notification',
+        message: message || 'This is a test notification from Execute',
+      }),
+    });
+    return this.handleResponse(response);
+  }
 }
 
 export const api = new ApiClient(API_BASE_URL);

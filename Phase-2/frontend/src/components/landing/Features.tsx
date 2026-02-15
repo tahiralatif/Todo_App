@@ -9,48 +9,56 @@ const features = [
     title: 'Secure Authentication',
     description: 'JWT-based authentication with industry-standard security practices and encrypted data storage.',
     color: 'from-blue-500 to-cyan-500',
+    badge: undefined,
   },
   {
     icon: Zap,
     title: 'Smart Task Creation',
-    description: 'Intuitive task management with rich descriptions, tags, and intelligent categorization.',
+    description: 'Create tasks with priorities, due dates, and rich descriptions. Never miss a deadline.',
     color: 'from-teal-500 to-green-500',
+    badge: undefined,
+  },
+  {
+    icon: Bell,
+    title: 'Smart Reminders',
+    description: 'Get browser notifications 15 minutes before tasks are due - even when app is closed!',
+    color: 'from-yellow-500 to-orange-500',
+    badge: 'New',
   },
   {
     icon: Filter,
     title: 'Advanced Filtering',
-    description: 'Powerful filters with pagination, search, and custom views for efficient organization.',
+    description: 'Filter by status, priority, and date. Search and organize tasks efficiently.',
     color: 'from-purple-500 to-pink-500',
+    badge: undefined,
   },
   {
     icon: Trash2,
     title: 'Soft Delete & Restore',
     description: 'Never lose data. Restore deleted tasks with a single click and maintain full history.',
     color: 'from-orange-500 to-red-500',
+    badge: undefined,
   },
   {
-    icon: Bell,
-    title: 'Real-time Notifications',
-    description: 'Stay updated with instant notifications for all task activities and team updates.',
-    color: 'from-yellow-500 to-orange-500',
+    icon: BarChart3,
+    title: 'Productivity Analytics',
+    description: 'Beautiful charts showing completion rates, trends, and performance metrics.',
+    color: 'from-green-500 to-teal-500',
+    badge: undefined,
   },
   {
     icon: User,
     title: 'Profile Management',
     description: 'Complete profile customization with photo uploads to cloud storage and preferences.',
     color: 'from-indigo-500 to-purple-500',
+    badge: undefined,
   },
   {
     icon: Calendar,
-    title: 'Calendar View',
-    description: 'Visualize your tasks in a clean, organized calendar interface with drag-and-drop.',
+    title: 'Due Date Tracking',
+    description: 'Set due dates with time, see countdown timers, and track overdue tasks automatically.',
     color: 'from-pink-500 to-rose-500',
-  },
-  {
-    icon: BarChart3,
-    title: 'Productivity Analytics',
-    description: 'Track completion rates, productivity trends, and performance metrics over time.',
-    color: 'from-green-500 to-teal-500',
+    badge: undefined,
   },
 ];
 
@@ -106,6 +114,14 @@ export default function Features() {
                 <div className={`w-14 h-14 bg-gradient-to-br ${feature.color} rounded-xl flex items-center justify-center transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg`}>
                   <feature.icon className="w-7 h-7 text-white" />
                 </div>
+                {/* New Badge */}
+                {feature.badge && (
+                  <div className="absolute -top-2 -right-2">
+                    <span className="px-2 py-1 bg-gradient-to-r from-teal-500 to-green-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
+                      {feature.badge}
+                    </span>
+                  </div>
+                )}
               </div>
               
               {/* Content */}

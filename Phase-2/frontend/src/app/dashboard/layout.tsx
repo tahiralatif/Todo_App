@@ -18,6 +18,8 @@ import {
 import { motion } from 'framer-motion';
 import api from '@/lib/api';
 import type { Profile } from '@/types';
+import NotificationPermissionPrompt from '@/components/NotificationPermissionPrompt';
+import NotificationBlockedAlert from '@/components/NotificationBlockedAlert';
 
 export default function DashboardLayout({
   children,
@@ -107,6 +109,12 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-[#0B0F14] text-white">
+      {/* Notification Permission Prompt */}
+      <NotificationPermissionPrompt />
+      
+      {/* Notification Blocked Alert */}
+      <NotificationBlockedAlert />
+      
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div 
@@ -133,31 +141,33 @@ export default function DashboardLayout({
             </button>
           </div>
 
-          {/* User Profile Card */}
-          <div className="p-6 border-b border-slate-700/50">
-            <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
-              <div className="flex items-center gap-3">
+          {/* User Profile Card - Enhanced */}
+          <Link href="/dashboard/profile" className="block p-6 border-b border-slate-700/50 hover:bg-slate-800/30 transition-all group">
+            <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5 group-hover:border-teal-500/30 transition-all">
+              <div className="flex items-center gap-4">
                 {profile?.profile_photo_url ? (
                   <img
                     src={profile.profile_photo_url}
                     alt={user.name}
-                    className="w-12 h-12 rounded-lg object-cover border-2 border-teal-500/30"
+                    className="w-16 h-16 rounded-xl object-cover border-2 border-teal-500/30 group-hover:border-teal-500/50 transition-all"
                   />
                 ) : (
-                  <div className="w-12 h-12 rounded-lg bg-teal-500/20 flex items-center justify-center border border-teal-500/30">
-                    <User className="w-6 h-6 text-teal-400" />
+                  <div className="w-16 h-16 rounded-xl bg-teal-500/20 flex items-center justify-center border-2 border-teal-500/30 group-hover:border-teal-500/50 transition-all">
+                    <User className="w-8 h-8 text-teal-400" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">{user.name}</p>
+                  <p className="text-base font-bold truncate text-white">{user.name}</p>
                   <p className="text-xs text-slate-400 truncate">{user.email}</p>
                 </div>
               </div>
               {profile?.bio && (
-                <p className="text-xs text-slate-500 mt-3 line-clamp-2">{profile.bio}</p>
+                <p className="text-xs text-slate-400 mt-4 line-clamp-3 leading-relaxed">
+                  {profile.bio}
+                </p>
               )}
             </div>
-          </div>
+          </Link>
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">

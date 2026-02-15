@@ -7,7 +7,7 @@ ENV_FILE = BACKEND_DIR / ".env"
 
 
 class Settings(BaseSettings):
-    database_url: str
+    database_url: str  # No default - must be provided in .env
     better_auth_secret: str
     debug: bool = False
     allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     from_email: str = ""
     support_email: str = "tara378581@gmail.com"
+    
+    # Push Notification Settings (VAPID)
+    vapid_key_path: str = str(BACKEND_DIR / "vapid_keys.pem")
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE),
@@ -36,3 +39,19 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Log database configuration on startup
+import logging
+logger = logging.getLogger(__name__)
+logger.info(f"ENV_FILE path: {ENV_FILE}")
+logger.info(f"ENV_FILE exists: {ENV_FILE.exists()}")
+logger.info(f"Database URL configured: {'neon.tech' in settings.database_url if settings.database_url else 'NOT SET'}")
+if settings.database_url:
+    # Mask password
+    db_url = settings.database_url
+    if "@" in db_url:
+        parts = db_url.split("@")
+        masked = parts[0].split(":")[0] + ":****@" + parts[1]
+    else:
+        masked = db_url
+    logger.info(f"Database: {masked}")

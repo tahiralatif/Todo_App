@@ -122,3 +122,16 @@ class Notification(SQLModel, table=True):
     # Relationships
     user: Optional["User"] = Relationship(back_populates="notifications")
     task: Optional["Task"] = Relationship(back_populates="notifications")
+
+
+
+class PushSubscription(SQLModel, table=True):
+    """Push subscription model for browser push notifications."""
+    __tablename__ = "push_subscriptions"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(foreign_key="users.id", index=True, nullable=False)
+    endpoint: str = Field(max_length=500, nullable=False)
+    p256dh: str = Field(max_length=200, nullable=False)  # Encryption key
+    auth: str = Field(max_length=200, nullable=False)  # Auth secret
+    created_at: datetime = Field(default_factory=datetime.now)

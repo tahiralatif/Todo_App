@@ -1,15 +1,36 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Target, Zap, Award } from 'lucide-react';
 
 export default function AnalyticsSection() {
+  const [timeRange, setTimeRange] = useState<'week' | 'month'>('week');
+
   const metrics = [
     { icon: TrendingUp, label: 'Completion Rate', value: '87%', change: '+12%' },
     { icon: Target, label: 'Tasks Completed', value: '247', change: '+34' },
     { icon: Zap, label: 'Productivity Score', value: '94', change: '+8' },
     { icon: Award, label: 'Current Streak', value: '14 days', change: 'Record!' },
   ];
+
+  const weeklyData = [
+    { day: 'Mon', value: 65, tasks: 8 },
+    { day: 'Tue', value: 80, tasks: 12 },
+    { day: 'Wed', value: 45, tasks: 6 },
+    { day: 'Thu', value: 90, tasks: 14 },
+    { day: 'Fri', value: 75, tasks: 10 },
+    { day: 'Sat', value: 55, tasks: 7 },
+    { day: 'Sun', value: 40, tasks: 5 },
+  ];
+
+  const monthlyData = Array.from({ length: 30 }, (_, i) => ({
+    day: (i + 1).toString(),
+    value: Math.floor(Math.random() * 60) + 40, // Random between 40-100
+    tasks: Math.floor(Math.random() * 10) + 5, // Random between 5-15
+  }));
+
+  const chartData = timeRange === 'week' ? weeklyData : monthlyData;
 
   return (
     <section id="analytics" className="py-32 relative overflow-hidden">
@@ -74,38 +95,51 @@ export default function AnalyticsSection() {
         >
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h3 className="text-2xl font-bold mb-2">Weekly Productivity</h3>
+              <h3 className="text-2xl font-bold mb-2">
+                {timeRange === 'week' ? 'Weekly' : 'Monthly'} Productivity
+              </h3>
               <p className="text-slate-400">Tasks completed per day</p>
             </div>
-            <div className="flex gap-4">
-              <button className="px-4 py-2 bg-teal-500 rounded-lg text-sm font-medium">Week</button>
-              <button className="px-4 py-2 bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors">Month</button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setTimeRange('week')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  timeRange === 'week'
+                    ? 'bg-teal-500 text-white'
+                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                }`}
+              >
+                Week
+              </button>
+              <button
+                onClick={() => setTimeRange('month')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  timeRange === 'month'
+                    ? 'bg-teal-500 text-white'
+                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                }`}
+              >
+                Month
+              </button>
             </div>
           </div>
 
           {/* Simple Bar Chart */}
-          <div className="h-64 flex items-end justify-between gap-4">
-            {[
-              { day: 'Mon', value: 65, tasks: 8 },
-              { day: 'Tue', value: 80, tasks: 12 },
-              { day: 'Wed', value: 45, tasks: 6 },
-              { day: 'Thu', value: 90, tasks: 14 },
-              { day: 'Fri', value: 75, tasks: 10 },
-              { day: 'Sat', value: 55, tasks: 7 },
-              { day: 'Sun', value: 40, tasks: 5 },
-            ].map((item, i) => (
+          <div className="h-64 flex items-end justify-between gap-2 overflow-x-auto">
+            {chartData.map((item, i) => (
               <motion.div
-                key={item.day}
+                key={`${timeRange}-${item.day}`}
                 initial={{ height: 0 }}
-                whileInView={{ height: `${item.value}%` }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1, duration: 0.5 }}
-                className="flex-1 bg-gradient-to-t from-teal-500 to-teal-400 rounded-t-lg relative group cursor-pointer hover:from-teal-400 hover:to-teal-300 transition-all"
+                animate={{ height: `${item.value}%` }}
+                transition={{ delay: i * 0.02, duration: 0.5 }}
+                className="flex-1 min-w-[20px] bg-gradient-to-t from-teal-500 to-teal-400 rounded-t-lg relative group cursor-pointer hover:from-teal-400 hover:to-teal-300 transition-all"
               >
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 px-3 py-1 rounded-lg text-sm font-semibold whitespace-nowrap">
+                <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 px-3 py-1 rounded-lg text-sm font-semibold whitespace-nowrap z-10">
                   {item.tasks} tasks
                 </div>
-                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-sm text-slate-400 font-medium">
+                <div className={`absolute -bottom-8 left-1/2 -translate-x-1/2 text-sm text-slate-400 font-medium ${
+                  timeRange === 'month' ? 'text-xs' : ''
+                }`}>
                   {item.day}
                 </div>
               </motion.div>

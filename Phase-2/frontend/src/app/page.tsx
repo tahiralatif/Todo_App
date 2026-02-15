@@ -2,6 +2,7 @@ import Navbar from '@/components/landing/Navbar';
 import Hero from '@/components/landing/Hero';
 import SocialProof from '@/components/landing/SocialProof';
 import Features from '@/components/landing/Features';
+import NotificationFeature from '@/components/landing/NotificationFeature';
 import ProductDemo from '@/components/landing/ProductDemo';
 import AnalyticsSection from '@/components/landing/AnalyticsSection';
 import Workflow from '@/components/landing/Workflow';
@@ -18,6 +19,7 @@ export default function LandingPage() {
       <Hero />
       <SocialProof />
       <Features />
+      <NotificationFeature />
       <ProductDemo />
       <AnalyticsSection />
       <Workflow />

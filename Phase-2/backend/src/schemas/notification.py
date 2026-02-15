@@ -11,6 +11,7 @@ NOTIFICATION_TYPES = {
     "TASK_DELETED",
     "TASK_COMPLETED",
     "TASK_PENDING",
+    "TASK_DUE_SOON",  # New type for due date reminders
     "LOGIN",
     "LOGOUT",
     "PROFILE_UPDATED",

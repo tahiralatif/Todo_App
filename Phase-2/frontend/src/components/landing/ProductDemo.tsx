@@ -244,7 +244,9 @@ export default function ProductDemo() {
                     exit={{ opacity: 0, y: -20 }}
                   >
                     <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-2xl font-bold">February 2026</h3>
+                      <h3 className="text-2xl font-bold">
+                        {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                      </h3>
                       <div className="flex gap-2">
                         <button className="px-3 py-1 bg-slate-800 rounded-lg text-sm hover:bg-slate-700 transition-colors">Today</button>
                       </div>
@@ -257,23 +259,41 @@ export default function ProductDemo() {
                         </div>
                       ))}
                       
-                      {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
-                        <motion.div
-                          key={day}
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: day * 0.01 }}
-                          className={`aspect-square flex items-center justify-center rounded-lg text-sm transition-all cursor-pointer ${
-                            day === 14
-                              ? 'bg-teal-500 text-white font-bold shadow-lg shadow-teal-500/50'
-                              : day % 7 === 0
-                              ? 'bg-slate-800/30 text-slate-500'
-                              : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800'
-                          }`}
-                        >
-                          {day}
-                        </motion.div>
-                      ))}
+                      {(() => {
+                        const today = new Date();
+                        const currentDay = today.getDate();
+                        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).getDay();
+                        const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+                        const days: JSX.Element[] = [];
+                        
+                        // Empty cells for days before month starts
+                        for (let i = 0; i < firstDay; i++) {
+                          days.push(
+                            <div key={`empty-${i}`} className="aspect-square" />
+                          );
+                        }
+                        
+                        // Actual days of the month
+                        for (let day = 1; day <= daysInMonth; day++) {
+                          days.push(
+                            <motion.div
+                              key={day}
+                              initial={{ opacity: 0, scale: 0.8 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: day * 0.01 }}
+                              className={`aspect-square flex items-center justify-center rounded-lg text-sm transition-all cursor-pointer ${
+                                day === currentDay
+                                  ? 'bg-teal-500 text-white font-bold shadow-lg shadow-teal-500/50'
+                                  : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800'
+                              }`}
+                            >
+                              {day}
+                            </motion.div>
+                          );
+                        }
+                        
+                        return days;
+                      })()}
                     </div>
                   </motion.div>
                 )}

@@ -66,11 +66,11 @@ try:
     if settings.supabase_url and settings.supabase_anon_key:
         from supabase import create_client
         supabase_client = create_client(settings.supabase_url, settings.supabase_anon_key)
-        logger.info(f"✅ Supabase client initialized in profile.py: {settings.supabase_url}")
+        logger.info(f"[OK] Supabase client initialized in profile.py: {settings.supabase_url}")
     else:
-        logger.warning("⚠️ Supabase storage disabled or credentials missing")
+        logger.warning("[WARNING] Supabase storage disabled or credentials missing")
 except Exception as e:
-    logger.error(f"❌ Failed to initialize Supabase client: {e}")
+    logger.error(f"[ERROR] Failed to initialize Supabase client: {e}")
     supabase_client = None
 
 
@@ -272,17 +272,17 @@ async def save_image_locally(file: UploadFile, user_id: str) -> str:
                     }
                 )
                 
-                logger.info(f"✅ Upload response: {response}")
+                logger.info(f"[OK] Upload response: {response}")
                 
                 # Get public URL
                 public_url = supabase_client.storage.from_(ProfileConfig.SUPABASE_BUCKET).get_public_url(unique_filename)
                 
-                logger.info(f"🔗 Public URL generated: {public_url}")
+                logger.info(f"[LINK] Public URL generated: {public_url}")
                 return public_url
                 
             except Exception as e:
-                logger.error(f"❌ Supabase upload failed: {type(e).__name__}: {str(e)}", exc_info=True)
-                logger.warning("⚠️ Falling back to local storage")
+                logger.error(f"[ERROR] Supabase upload failed: {type(e).__name__}: {str(e)}", exc_info=True)
+                logger.warning("[WARNING] Falling back to local storage")
                 # Fall through to local storage
         
         # Save locally (fallback or if Supabase disabled)
@@ -292,7 +292,7 @@ async def save_image_locally(file: UploadFile, user_id: str) -> str:
         with open(filepath, "wb") as f:
             f.write(image_data)
         
-        logger.info(f"💾 Saved locally: {filepath}")
+        logger.info(f"[SAVE] Saved locally: {filepath}")
         
         # Return URL
         if ProfileConfig.CDN_URL:
@@ -301,7 +301,7 @@ async def save_image_locally(file: UploadFile, user_id: str) -> str:
             return f"/uploads/profile_photos/{unique_filename.replace('/', '_')}"
             
     except Exception as e:
-        logger.error(f"❌ Failed to save image: {e}", exc_info=True)
+        logger.error(f"[ERROR] Failed to save image: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to save image"

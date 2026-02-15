@@ -1,0 +1,14 @@
+# dependencies
+node_modules/
+
+# next build
+.next/
+
+# logs
+*.log
+
+# env
+.env
+
+# lock files if needed (optional)
+# package-lock.json

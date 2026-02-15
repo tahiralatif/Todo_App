@@ -31,10 +31,11 @@ from src.routes.tasks import router as tasks_router
 from src.routes.notifications import router as notifications_router
 from src.routes.profile import router as profile_router
 from src.routes.contact import router as contact_router
+from src.routes.push_subscription import router as push_router
 from src.services.supabase_storage_service import get_supabase_storage_service
 
 # Ensure models are imported so SQLModel metadata includes tables
-from src.models import User, Task, Notification  # noqa: F401
+from src.models import User, Task, Notification, PushSubscription  # noqa: F401
 
 
 app = FastAPI(
@@ -97,11 +98,32 @@ install_error_handlers(app)
 install_logging_middleware(app)
 
 
+# Add request logging middleware
+@app.middleware("http")
+async def log_requests(request, call_next):
+    import time
+    start_time = time.time()
+    
+    # Log incoming request
+    logger.info(f"🔵 INCOMING REQUEST: {request.method} {request.url.path}")
+    logger.info(f"   Client: {request.client.host if request.client else 'unknown'}")
+    logger.info(f"   Headers: {dict(request.headers)}")
+    
+    response = await call_next(request)
+    
+    # Log response
+    process_time = time.time() - start_time
+    logger.info(f"🟢 RESPONSE: {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.2f}s")
+    
+    return response
+
+
 @app.on_event("startup")
 async def on_startup() -> None:
     logger.info("Starting Todo App Backend...")
     await init_db()
     logger.info("Database initialized successfully")
+    
     # Test cloud storage connection
     try:       
         storage_service = get_supabase_storage_service()
@@ -112,11 +134,51 @@ async def on_startup() -> None:
     except Exception as e:
         logger.warning(f"Cloud storage not configured: {e}")
         logger.info("Profile photo uploads will not work until cloud storage is configured")
+    
+    # Start notification scheduler
+    try:
+        from src.services.notification_scheduler import start_scheduler
+        await start_scheduler()
+        logger.info("Notification scheduler started successfully")
+    except Exception as e:
+        logger.error(f"Failed to start notification scheduler: {e}")
+
+
+@app.on_event("shutdown")
+async def on_shutdown() -> None:
+    """Cleanup on application shutdown."""
+    logger.info("Shutting down Todo App Backend...")
+    try:
+        from src.services.notification_scheduler import stop_scheduler
+        stop_scheduler()
+        logger.info("Notification scheduler stopped")
+    except Exception as e:
+        logger.error(f"Error stopping notification scheduler: {e}")
 
 
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "healthy"}
+
+
+@app.get("/debug/db-config")
+async def debug_db_config() -> dict:
+    """Debug endpoint to check database configuration"""
+    from src.config import settings
+    db_url = settings.database_url
+    # Mask password for security
+    if "@" in db_url:
+        parts = db_url.split("@")
+        masked_url = parts[0].split(":")[0] + ":****@" + parts[1]
+    else:
+        masked_url = db_url
+    
+    return {
+        "database_url": masked_url,
+        "is_neon": "neon.tech" in db_url,
+        "is_sqlite": "sqlite" in db_url,
+        "debug_mode": settings.debug
+    }
 
 
 # Register route handlers
@@ -125,6 +187,7 @@ app.include_router(tasks_router)
 app.include_router(notifications_router)
 app.include_router(profile_router)
 app.include_router(contact_router)
+app.include_router(push_router)
 
 # Mount static files for profile photos
 import os

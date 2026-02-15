@@ -35,6 +35,10 @@ async def create_task(
     Returns:
         Created Task instance
     """
+    # Remove timezone info if present (database uses TIMESTAMP WITHOUT TIME ZONE)
+    if due_date is not None and hasattr(due_date, 'tzinfo') and due_date.tzinfo is not None:
+        due_date = due_date.replace(tzinfo=None)
+    
     task = Task(
         user_id=user_id,
         title=title,
@@ -205,7 +209,11 @@ async def update_task(
         task.priority = priority
 
     if due_date is not None:
-        task.due_date = due_date
+        # Remove timezone info if present (database uses TIMESTAMP WITHOUT TIME ZONE)
+        if hasattr(due_date, 'tzinfo') and due_date.tzinfo is not None:
+            task.due_date = due_date.replace(tzinfo=None)
+        else:
+            task.due_date = due_date
 
     task.updated_at = datetime.now()
     await session.commit()
