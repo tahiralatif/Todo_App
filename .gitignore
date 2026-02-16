@@ -1,0 +1,48 @@
+# Root level gitignore for Todo App
+
+# Environment files (CRITICAL - Never commit!)
+.env
+.env.local
+.env.production
+.env.development
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.db
+*.sqlite
+*.sqlite3
+
+# Node
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Cache
+.cache/
+.mypy_cache/
+.pytest_cache/
+
+# Uploads
+uploads/
+*.pem
+
+# Database
+todo_app.db
+*.db-journal

@@ -126,16 +126,16 @@ export default function TasksPage() {
                 setNotificationsEnabled(true);
                 showToast('✅ Notifications enabled! You will receive reminders for this task.', 'success');
               } else {
-                showToast('⚠️ Could not create push subscription', 'warning');
+                showToast('Could not create push subscription', 'error');
               }
             } else if (permission === 'denied') {
-              showToast('⚠️ Notifications blocked. Enable them in browser settings (🔒 icon in address bar) to get reminders.', 'warning');
+              showToast('Notifications blocked. Enable them in browser settings to get reminders.', 'error');
             } else if (permission === 'default') {
-              showToast('⚠️ Notification permission not granted', 'warning');
+              showToast('Notification permission not granted', 'error');
             }
           } catch (error) {
             console.error('❌ Failed to enable notifications:', error);
-            showToast('⚠️ Could not enable notifications. Task will still be created.', 'warning');
+            showToast('Could not enable notifications. Task will still be created.', 'error');
           }
         } else {
           console.log('✅ Notifications already enabled');
@@ -759,14 +759,6 @@ export default function TasksPage() {
                         </p>
                         <p className="text-xs text-teal-200 mt-1">
                           You'll automatically receive a browser notification when this task is due
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-                        </p>
-                        <p className="text-xs text-emerald-200">
-                          You'll receive a reminder when this task is due
                         </p>
                       </div>
                     </div>
