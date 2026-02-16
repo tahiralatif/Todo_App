@@ -372,21 +372,33 @@ export default function DashboardPage() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.6 + index * 0.1 }}
-                    className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all group cursor-pointer"
+                    className="flex items-start gap-3 p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all group cursor-pointer"
                     onClick={() => handleToggleComplete(task.id)}
                   >
                     {task.completed ? (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
                     ) : (
-                      <Circle className="w-5 h-5 text-slate-600 group-hover:text-slate-500 flex-shrink-0" />
+                      <Circle className="w-5 h-5 text-slate-600 group-hover:text-slate-500 flex-shrink-0 mt-0.5" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className={`font-medium truncate ${task.completed ? 'line-through text-slate-500' : 'text-white'}`}>
+                      <p className={`font-medium ${task.completed ? 'line-through text-slate-500' : 'text-white'}`}>
                         {task.title}
                       </p>
                       {task.description && (
-                        <p className="text-sm text-slate-400 truncate">{task.description}</p>
+                        <p className="text-sm text-slate-400 truncate mt-1">{task.description}</p>
                       )}
+                      <div className="flex items-center gap-3 mt-2 text-xs">
+                        <span className="text-slate-500 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Created: {new Date(task.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                        {task.due_date && (
+                          <span className="text-orange-400 flex items-center gap-1 font-semibold">
+                            <Calendar className="w-3 h-3" />
+                            Due: {new Date(task.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <span className="px-3 py-1 bg-orange-500/10 border border-orange-500/20 rounded-lg text-xs font-semibold text-orange-400">
                       {task.priority}
@@ -434,21 +446,33 @@ export default function DashboardPage() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.7 + index * 0.1 }}
-                    className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all group cursor-pointer"
+                    className="flex items-start gap-3 p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all group cursor-pointer"
                     onClick={() => handleToggleComplete(task.id)}
                   >
                     {task.completed ? (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
                     ) : (
-                      <Circle className="w-5 h-5 text-slate-600 group-hover:text-slate-500 flex-shrink-0" />
+                      <Circle className="w-5 h-5 text-slate-600 group-hover:text-slate-500 flex-shrink-0 mt-0.5" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className={`font-medium truncate ${task.completed ? 'line-through text-slate-500' : 'text-white'}`}>
+                      <p className={`font-medium ${task.completed ? 'line-through text-slate-500' : 'text-white'}`}>
                         {task.title}
                       </p>
                       {task.description && (
-                        <p className="text-sm text-slate-400 truncate">{task.description}</p>
+                        <p className="text-sm text-slate-400 truncate mt-1">{task.description}</p>
                       )}
+                      <div className="flex items-center gap-3 mt-2 text-xs">
+                        <span className="text-slate-500 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Created: {new Date(task.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                        {task.due_date && (
+                          <span className="text-red-400 flex items-center gap-1 font-semibold">
+                            <Calendar className="w-3 h-3" />
+                            Due: {new Date(task.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <span className="px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-lg text-xs font-semibold text-red-400">
                       HIGH
@@ -503,25 +527,38 @@ export default function DashboardPage() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.8 + index * 0.05 }}
-                  className="flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all group cursor-pointer"
+                  className="flex items-start gap-4 p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all group cursor-pointer"
                   onClick={() => handleToggleComplete(task.id)}
                 >
                   {task.completed ? (
-                    <CheckCircle2 className="w-6 h-6 text-emerald-500 flex-shrink-0" />
+                    <CheckCircle2 className="w-6 h-6 text-emerald-500 flex-shrink-0 mt-0.5" />
                   ) : (
-                    <Circle className="w-6 h-6 text-slate-600 group-hover:text-slate-500 flex-shrink-0" />
+                    <Circle className="w-6 h-6 text-slate-600 group-hover:text-slate-500 flex-shrink-0 mt-0.5" />
                   )}
                   <div className="flex-1 min-w-0">
                     <p className={`font-medium ${task.completed ? 'line-through text-slate-500' : 'text-white'}`}>
                       {task.title}
                     </p>
                     {task.description && (
-                      <p className="text-sm text-slate-400 truncate">{task.description}</p>
+                      <p className="text-sm text-slate-400 truncate mt-1">{task.description}</p>
                     )}
+                    <div className="flex items-center gap-3 mt-2 text-xs">
+                      <span className="text-slate-500 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        Created: {new Date(task.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                      {task.due_date && (
+                        <span className={`flex items-center gap-1 font-semibold ${
+                          new Date(task.due_date) < new Date() && !task.completed
+                            ? 'text-red-400'
+                            : 'text-teal-400'
+                        }`}>
+                          <Calendar className="w-3 h-3" />
+                          Due: {new Date(task.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <span className="text-xs text-slate-500">
-                    {new Date(task.created_at).toLocaleDateString()}
-                  </span>
                 </motion.div>
               ))}
             </div>

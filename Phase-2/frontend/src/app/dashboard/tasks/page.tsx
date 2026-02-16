@@ -102,6 +102,46 @@ export default function TasksPage() {
 
     try {
       const due_date = newTask.due_date ? new Date(newTask.due_date).toISOString() : undefined;
+      
+      // Auto-request notification permission if due date is set
+      if (due_date) {
+        console.log('🔔 Checking notification permission...');
+        console.log('Current permission:', Notification.permission);
+        console.log('Notifications enabled state:', notificationsEnabled);
+        
+        if (!notificationsEnabled || Notification.permission !== 'granted') {
+          try {
+            console.log('📢 Requesting notification permission...');
+            const permission = await requestNotificationPermission();
+            console.log('Permission result:', permission);
+            
+            if (permission === 'granted') {
+              console.log('✅ Permission granted, subscribing to push...');
+              const subscription = await subscribeToPushNotifications();
+              console.log('Subscription:', subscription);
+              
+              if (subscription) {
+                console.log('💾 Saving subscription to backend...');
+                await api.subscribeToPush(subscription);
+                setNotificationsEnabled(true);
+                showToast('✅ Notifications enabled! You will receive reminders for this task.', 'success');
+              } else {
+                showToast('⚠️ Could not create push subscription', 'warning');
+              }
+            } else if (permission === 'denied') {
+              showToast('⚠️ Notifications blocked. Enable them in browser settings (🔒 icon in address bar) to get reminders.', 'warning');
+            } else if (permission === 'default') {
+              showToast('⚠️ Notification permission not granted', 'warning');
+            }
+          } catch (error) {
+            console.error('❌ Failed to enable notifications:', error);
+            showToast('⚠️ Could not enable notifications. Task will still be created.', 'warning');
+          }
+        } else {
+          console.log('✅ Notifications already enabled');
+        }
+      }
+      
       await api.createTask(newTask.title, newTask.description, newTask.priority, due_date);
       setNewTask({ title: '', description: '', priority: 'MEDIUM', due_date: '' });
       setShowCreateModal(false);
@@ -351,17 +391,6 @@ export default function TasksPage() {
             <p className="text-slate-400 text-lg">Manage your tasks with style and efficiency</p>
           </div>
           <div className="flex gap-3">
-            {!notificationsEnabled && (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleEnableNotifications}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 rounded-xl font-semibold transition-all shadow-lg shadow-orange-500/25"
-              >
-                <Bell className="w-5 h-5" />
-                Enable Reminders
-              </motion.button>
-            )}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -565,21 +594,20 @@ export default function TasksPage() {
                             </div>
                           )}
 
-                          {/* Due Date with Tooltip */}
+                          {/* Due Date with Full DateTime */}
                           {dueInfo && (
                             <div 
                               className={`flex items-center gap-1.5 px-3 py-1.5 ${
-                                dueInfo.urgent ? 'bg-red-500/10 border-red-500/30 animate-pulse' : 'bg-white/5 border-white/10'
+                                dueInfo.urgent ? 'bg-red-500/10 border-red-500/30 animate-pulse' : 'bg-teal-500/10 border-teal-500/30'
                               } border rounded-lg group relative`}
-                              title={`Deadline: ${dueInfo.fullDate}`}
                             >
                               <Clock className={`w-3.5 h-3.5 ${dueInfo.color}`} />
                               <span className={`text-xs font-semibold ${dueInfo.color}`}>
-                                {dueInfo.text}
+                                Due: {dueInfo.fullDate}
                               </span>
-                              {/* Tooltip */}
+                              {/* Tooltip with urgency info */}
                               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 border border-white/20 rounded-lg text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                                Deadline: {dueInfo.fullDate}
+                                {dueInfo.text}
                                 <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900"></div>
                               </div>
                             </div>
@@ -589,11 +617,15 @@ export default function TasksPage() {
                           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg group relative">
                             <Calendar className="w-3.5 h-3.5 text-slate-400" />
                             <span className="text-xs font-medium text-slate-400">
-                              Created {getTimeInfo(task.created_at)}
+                              Created: {new Date(task.created_at).toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric', 
+                                year: 'numeric'
+                              })}
                             </span>
-                            {/* Tooltip */}
+                            {/* Tooltip with full timestamp */}
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 border border-white/20 rounded-lg text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                              Created: {new Date(task.created_at).toLocaleString('en-US', { 
+                              {new Date(task.created_at).toLocaleString('en-US', { 
                                 month: 'short', 
                                 day: 'numeric', 
                                 year: 'numeric',
@@ -710,48 +742,28 @@ export default function TasksPage() {
                   />
                 </div>
 
-                {/* Notification Enable Section */}
-                {!notificationsEnabled && newTask.due_date && (
+                {/* Auto Notification Info */}
+                {newTask.due_date && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
-                    className="bg-gradient-to-br from-orange-900/20 to-red-900/20 border border-orange-500/30 rounded-xl p-4"
+                    className="bg-gradient-to-br from-teal-900/20 to-blue-900/20 border border-teal-500/30 rounded-xl p-4"
                   >
-                    <div className="flex items-start gap-3">
-                      <Bell className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-teal-500/20 rounded-lg">
+                        <Bell className="w-4 h-4 text-teal-400" />
+                      </div>
                       <div className="flex-1">
-                        <h4 className="text-sm font-bold text-orange-300 mb-1">
-                          Enable Reminders
-                        </h4>
-                        <p className="text-xs text-orange-200 mb-3">
-                          Get notified when this task is due. Enable browser notifications to never miss a deadline!
+                        <p className="text-sm font-semibold text-teal-300">
+                          📬 Reminder Notification
                         </p>
-                        <button
-                          type="button"
-                          onClick={handleEnableNotifications}
-                          className="w-full px-4 py-2 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2"
-                        >
-                          <Bell className="w-4 h-4" />
-                          Enable Notifications
-                        </button>
+                        <p className="text-xs text-teal-200 mt-1">
+                          You'll automatically receive a browser notification when this task is due
+                        </p>
                       </div>
                     </div>
                   </motion.div>
                 )}
-
-                {notificationsEnabled && newTask.due_date && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="bg-gradient-to-br from-emerald-900/20 to-green-900/20 border border-emerald-500/30 rounded-xl p-4"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-emerald-500/20 rounded-lg">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-emerald-300">
-                          Notifications Enabled ✓
                         </p>
                         <p className="text-xs text-emerald-200">
                           You'll receive a reminder when this task is due

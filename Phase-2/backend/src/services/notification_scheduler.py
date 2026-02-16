@@ -1,6 +1,6 @@
 """
 Background scheduler for sending task due date notifications.
-Checks for upcoming tasks and sends notifications to users.
+Checks for upcoming tasks and sends email notifications to users.
 """
 
 import asyncio
@@ -12,9 +12,9 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import get_session
-from src.models.user import Task, Notification, PushSubscription
+from src.models.user import Task, Notification, User
 from src.services.notification_service import NotificationService
-from src.services.push_notification_service import get_push_service
+from src.services.email_service import EmailService
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,8 @@ class NotificationScheduler:
     
     def __init__(self):
         self.running = False
-        self.check_interval = 10  # Check every 10 seconds for testing (change to 60 for production)
+        self.check_interval = 60  # Check every 60 seconds
+        self.email_service = EmailService()
         
     async def start(self):
         """Start the notification scheduler."""
@@ -50,19 +51,12 @@ class NotificationScheduler:
         async for session in get_session():
             try:
                 # Get tasks due in the next 15 minutes
-                # Use UTC time since database stores UTC timestamps
                 from datetime import timezone
                 now = datetime.now(timezone.utc).replace(tzinfo=None)
                 notification_window_start = now
                 notification_window_end = now + timedelta(minutes=15)
                 
                 logger.info(f"Checking for tasks due between {notification_window_start} UTC and {notification_window_end} UTC")
-                
-                # Find tasks that:
-                # 1. Are not completed
-                # 2. Are not deleted
-                # 3. Have a due_date in the next 15 minutes
-                # 4. Haven't been notified yet (we'll track this)
                 
                 statement = select(Task).where(
                     and_(
@@ -85,8 +79,13 @@ class NotificationScheduler:
                         logger.debug(f"Notification already sent for task {task.id}")
                         continue
                     
-                    # Calculate time until due
-                    time_until_due = task.due_date - now
+                    # Calculate time until due (handle timezone-aware dates)
+                    task_due_date = task.due_date
+                    if task_due_date.tzinfo is not None:
+                        # Convert timezone-aware to naive UTC
+                        task_due_date = task_due_date.replace(tzinfo=None)
+                    
+                    time_until_due = task_due_date - now
                     minutes_until_due = int(time_until_due.total_seconds() / 60)
                     
                     # Create notification message
@@ -102,7 +101,7 @@ class NotificationScheduler:
                         user_id=task.user_id,
                         task_id=task.id,
                         type="TASK_DUE_SOON",
-                        title="Task Due Soon",
+                        title="⏰ Task Due Soon",
                         message=message,
                         is_read=False
                     )
@@ -110,8 +109,8 @@ class NotificationScheduler:
                     session.add(notification)
                     logger.info(f"Created due notification for task {task.id}: {message}")
                     
-                    # Send browser push notification
-                    await self.send_push_notification(session, task, minutes_until_due)
+                    # Send email notification
+                    await self.send_email_notification(session, task, minutes_until_due)
                 
                 await session.commit()
                 
@@ -131,49 +130,81 @@ class NotificationScheduler:
         notification = result.scalar_one_or_none()
         return notification is not None
     
-    async def send_push_notification(self, session: AsyncSession, task: Task, minutes_until_due: int):
-        """Send browser push notification for task due soon."""
+    async def send_email_notification(self, session: AsyncSession, task: Task, minutes_until_due: int):
+        """Send email notification for task due soon."""
         try:
-            # Get user's push subscriptions
-            statement = select(PushSubscription).where(
-                PushSubscription.user_id == task.user_id
-            )
+            # Get user email
+            statement = select(User).where(User.id == task.user_id)
             result = await session.execute(statement)
-            subscriptions = result.scalars().all()
+            user = result.scalar_one_or_none()
             
-            if not subscriptions:
-                logger.debug(f"No push subscriptions found for user {task.user_id}")
+            if not user or not user.email:
+                logger.warning(f"No email found for user {task.user_id}")
                 return
             
-            # Prepare push notification service
-            push_service = get_push_service()
+            # Format due time message
+            if minutes_until_due <= 0:
+                time_msg = "now"
+            elif minutes_until_due == 1:
+                time_msg = "in 1 minute"
+            else:
+                time_msg = f"in {minutes_until_due} minutes"
             
-            # Send to all subscriptions
-            for sub in subscriptions:
-                subscription_info = {
-                    "endpoint": sub.endpoint,
-                    "keys": {
-                        "p256dh": sub.p256dh,
-                        "auth": sub.auth
-                    }
-                }
+            # Send email
+            subject = f"⏰ Task Reminder: {task.title}"
+            body = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px; text-align: center;">
+                    <h1 style="color: white; margin: 0;">⏰ Task Reminder</h1>
+                </div>
                 
-                # Send push notification
-                success = await asyncio.to_thread(
-                    push_service.send_task_notification,
-                    [subscription_info],
-                    task.title,
-                    "due_soon",
-                    minutes_until_due
-                )
+                <div style="background: #f8f9fa; padding: 30px; border-radius: 10px; margin-top: 20px;">
+                    <h2 style="color: #333; margin-top: 0;">Your task is due {time_msg}!</h2>
+                    
+                    <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea;">
+                        <h3 style="color: #667eea; margin-top: 0;">{task.title}</h3>
+                        {f'<p style="color: #666; margin: 10px 0;">{task.description}</p>' if task.description else ''}
+                        <p style="color: #999; font-size: 14px; margin: 10px 0;">
+                            <strong>Priority:</strong> {task.priority}<br>
+                            <strong>Due:</strong> {task.due_date.strftime('%B %d, %Y at %I:%M %p')}
+                        </p>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="http://localhost:3000/dashboard/tasks" 
+                           style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                                  color: white; 
+                                  padding: 15px 40px; 
+                                  text-decoration: none; 
+                                  border-radius: 8px; 
+                                  display: inline-block;
+                                  font-weight: bold;">
+                            View Task
+                        </a>
+                    </div>
+                </div>
                 
-                if success:
-                    logger.info(f"Sent push notification for task {task.id} to user {task.user_id}")
-                else:
-                    logger.warning(f"Failed to send push notification for task {task.id}")
+                <p style="text-align: center; color: #999; font-size: 12px; margin-top: 30px;">
+                    This is an automated reminder from Execute Todo App
+                </p>
+            </body>
+            </html>
+            """
+            
+            success = await self.email_service.send_email(
+                to_email=user.email,
+                subject=subject,
+                html_body=body
+            )
+            
+            if success:
+                logger.info(f"✅ Sent email notification to {user.email} for task {task.id}")
+            else:
+                logger.warning(f"❌ Failed to send email notification for task {task.id}")
                     
         except Exception as e:
-            logger.error(f"Error sending push notification: {e}", exc_info=True)
+            logger.error(f"Error sending email notification: {e}", exc_info=True)
 
 
 # Global scheduler instance

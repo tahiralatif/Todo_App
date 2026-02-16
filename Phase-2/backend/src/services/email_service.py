@@ -22,6 +22,58 @@ class EmailService:
         self.from_email = getattr(settings, 'from_email', self.smtp_user)
         self.to_email = getattr(settings, 'support_email', 'tara378581@gmail.com')
     
+    async def send_email(
+        self,
+        to_email: str,
+        subject: str,
+        html_body: str,
+        text_body: Optional[str] = None
+    ) -> bool:
+        """
+        Send a generic email.
+        
+        Args:
+            to_email: Recipient email address
+            subject: Email subject
+            html_body: HTML email body
+            text_body: Plain text email body (optional)
+            
+        Returns:
+            bool: True if email sent successfully, False otherwise
+        """
+        try:
+            # Create message
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = self.from_email
+            msg['To'] = to_email
+            
+            # Attach text and HTML versions
+            if text_body:
+                part1 = MIMEText(text_body, 'plain')
+                msg.attach(part1)
+            
+            part2 = MIMEText(html_body, 'html')
+            msg.attach(part2)
+            
+            # Send email
+            if not self.smtp_user or not self.smtp_password:
+                logger.warning("SMTP credentials not configured. Email not sent.")
+                logger.info(f"Would have sent email to {to_email}: {subject}")
+                return True  # Return True for development
+            
+            with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
+                server.starttls()
+                server.login(self.smtp_user, self.smtp_password)
+                server.send_message(msg)
+            
+            logger.info(f"Email sent successfully to {to_email}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to send email: {e}")
+            return False
+    
     async def send_contact_email(
         self,
         name: str,
