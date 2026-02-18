@@ -1,171 +1,151 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import Link from 'next/link';
+import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { GlassCard } from '@/components/ui/GlassCard';
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import MainCanvas from '@/components/layout/MainCanvas';
 
-const LoginPage: React.FC = () => {
+export default function LoginPage() {
+  const { login } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string>('');
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const { login, isLoading } = useAuth();
-  const router = useRouter();
-
-  const validateForm = () => {
-    let isValid = true;
-    setEmailError('');
-    setPasswordError('');
-
-    if (!email) {
-      setEmailError('Email is required');
-      isValid = false;
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      setEmailError('Invalid email address');
-      isValid = false;
-    }
-
-    if (!password) {
-      setPasswordError('Password is required');
-      isValid = false;
-    } else if (password.length < 8) {
-      setPasswordError('Password must be at least 8 characters');
-      isValid = false;
-    }
-
-    return isValid;
-  };
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm()) return;
-
+    setLoading(true);
+    setError('');
+    
     try {
-      setError('');
       await login(email, password);
-      router.push('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please try again.');
+      setError(err.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <ProtectedRoute requireAuth={false}>
-      <MainCanvas>
-        <div className="min-h-screen flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md"
-        >
-          <GlassCard className="p-8">
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-teal-500 bg-clip-text text-transparent mb-2">
-                Welcome Back
-              </h1>
-              <p className="text-gray-400">Sign in to your Todo App account</p>
-            </div>
+    <div className="min-h-screen bg-[#0B0F14] flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-teal-500/20 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" />
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm"
-                >
-                  {error}
-                </motion.div>
-              )}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md relative z-10"
+      >
+        {/* Logo */}
+        <Link href="/" className="flex items-center justify-center mb-8">
+          <span className="text-3xl font-bold">
+            Execute<span className="text-teal-500">.</span>
+          </span>
+        </Link>
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium mb-2">
-                  Email Address
-                </label>
+        {/* Login Card */}
+        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
+            <p className="text-slate-400">Sign in to continue to your account</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Error Message */}
+            {error && (
+              <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-400 text-sm">
+                {error}
+              </div>
+            )}
+
+            {/* Email Input */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
-                  id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  placeholder="Enter your email"
-                  disabled={isLoading}
+                  placeholder="you@example.com"
+                  required
+                  className="w-full pl-10 pr-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors"
                 />
-                {emailError && (
-                  <p className="text-red-400 text-sm mt-1">{emailError}</p>
-                )}
               </div>
+            </div>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium mb-2">
-                  Password
-                </label>
+            {/* Password Input */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
-                  id="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                   placeholder="Enter your password"
-                  disabled={isLoading}
+                  required
+                  className="w-full pl-10 pr-12 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors"
                 />
-                {passwordError && (
-                  <p className="text-red-400 text-sm mt-1">{passwordError}</p>
-                )}
-              </div>
-
-              <motion.button
-                type="submit"
-                disabled={isLoading}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full bg-gradient-to-r from-blue-500 to-teal-500 text-white py-3 px-6 rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isLoading ? (
-                  <>
-                    <LoadingSpinner size="sm" />
-                    Signing In...
-                  </>
-                ) : (
-                  'Sign In'
-                )}
-              </motion.button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-gray-400">
-                Don't have an account?{' '}
-                <Link
-                  href="/signup"
-                  className="text-blue-400 hover:text-blue-300 transition-colors font-medium"
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
                 >
-                  Sign up here
-                </Link>
-              </p>
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
 
-            <div className="mt-4 text-center">
-              <Link
-                href="/"
-                className="text-gray-500 hover:text-gray-400 transition-colors text-sm"
-              >
-                ← Back to Home
-              </Link>
+            {/* Remember & Forgot */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" className="w-4 h-4 rounded border-slate-700 bg-slate-800 text-teal-500 focus:ring-teal-500" />
+                <span className="text-sm text-slate-400">Remember me</span>
+              </label>
             </div>
-          </GlassCard>
-        </motion.div>
-      </div>
-    </MainCanvas>
-    </ProtectedRoute>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-teal-600 hover:bg-teal-500 rounded-xl font-semibold transition-all hover:shadow-xl hover:shadow-teal-500/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  Sign In
+                  <ArrowRight className="w-5 h-5" />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Sign Up Link */}
+          <p className="text-center text-slate-400 mt-6">
+            Don't have an account?{' '}
+            <Link href="/signup" className="text-teal-400 hover:text-teal-300 font-medium">
+              Sign up
+            </Link>
+          </p>
+        </div>
+
+        {/* Back to Home */}
+        <div className="text-center mt-6">
+          <Link href="/" className="text-slate-400 hover:text-white transition-colors">
+            ← Back to home
+          </Link>
+        </div>
+      </motion.div>
+    </div>
   );
-};
-
-export default LoginPage;
+}

@@ -13,10 +13,18 @@ class NotificationTypeEnum(str, Enum):
     TASK_DELETED = "TASK_DELETED"
     TASK_COMPLETED = "TASK_COMPLETED"
     TASK_PENDING = "TASK_PENDING"
+    TASK_DUE_SOON = "TASK_DUE_SOON"
     LOGIN = "LOGIN"
     LOGOUT = "LOGOUT"
     PROFILE_UPDATED = "PROFILE_UPDATED"
     SIGNUP = "SIGNUP"
+
+
+class TaskPriorityEnum(str, Enum):
+    """Task priority enumeration."""
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
 
 
 class User(SQLModel, table=True):
@@ -55,6 +63,19 @@ class Task(SQLModel, table=True):
     title: str = Field(max_length=200)
     description: Optional[str] = Field(default=None, max_length=1000)
     completed: bool = Field(default=False, index=True)
+    priority: str = Field(
+        default="MEDIUM",
+        sa_column=Column(
+            SQLEnum(
+                TaskPriorityEnum,
+                name="taskpriority",
+                create_type=True,
+                native_enum=True
+            ),
+            nullable=False
+        )
+    )
+    due_date: Optional[datetime] = Field(default=None, index=True)
     is_deleted: bool = Field(default=False, index=True)
     deleted_at: Optional[datetime] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.now)
@@ -71,6 +92,7 @@ class NotificationType:
     TASK_DELETED = "TASK_DELETED"
     TASK_COMPLETED = "TASK_COMPLETED"
     TASK_PENDING = "TASK_PENDING"
+    TASK_DUE_SOON = "TASK_DUE_SOON"
     LOGIN = "LOGIN"
     LOGOUT = "LOGOUT"
     PROFILE_UPDATED = "PROFILE_UPDATED"
@@ -102,3 +124,16 @@ class Notification(SQLModel, table=True):
     # Relationships
     user: Optional["User"] = Relationship(back_populates="notifications")
     task: Optional["Task"] = Relationship(back_populates="notifications")
+
+
+
+class PushSubscription(SQLModel, table=True):
+    """Push subscription model for browser push notifications."""
+    __tablename__ = "push_subscriptions"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(foreign_key="users.id", index=True, nullable=False)
+    endpoint: str = Field(max_length=500, nullable=False)
+    p256dh: str = Field(max_length=200, nullable=False)  # Encryption key
+    auth: str = Field(max_length=200, nullable=False)  # Auth secret
+    created_at: datetime = Field(default_factory=datetime.now)

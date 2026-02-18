@@ -289,6 +289,193 @@ async def list_notifications(
 
 
 # =================================
+# MARK ALL AS READ ENDPOINT (MUST BE BEFORE /{notification_id})
+# =================================
+
+@router.put(
+    "/mark-all-read",
+    response_model=MarkAllAsReadResponse,
+    summary="Mark all notifications as read",
+    description="Mark all unread notifications for the user as read",
+    responses={
+        200: {
+            "description": "All notifications marked as read",
+            "model": MarkAllAsReadResponse
+        },
+        500: {
+            "description": "Internal server error"
+        }
+    }
+)
+async def mark_all_notifications_as_read(
+    request: Request,
+    user=Depends(require_user),
+    session: AsyncSession = Depends(get_session),
+) -> MarkAllAsReadResponse:
+    """
+    Mark all notifications for the user as read.
+    
+    **Use cases:**
+    - User clicks "Mark all as read" button
+    - Batch operation for better UX
+    - Clear notification badge
+    
+    **Performance:**
+    - Efficient bulk update operation
+    - Returns count of updated notifications
+    - Idempotent - safe to call multiple times
+    
+    **Returns:**
+    - Count of notifications marked as read
+    - Success message
+    """
+    request_id = generate_request_id()
+    user_id = extract_user_id(user)
+    
+    logger.info(f"[{request_id}] Mark all as read - User: {user_id}")
+    
+    try:
+        # Mark all notifications as read
+        try:
+            count = await NotificationService.mark_all_notifications_as_read(
+                session=session,
+                user_id=user_id,
+            )
+        except SQLAlchemyError as e:
+            logger.error(f"[{request_id}] Database error marking all as read: {e}")
+            await session.rollback()
+            raise DatabaseError("marking notifications as read")
+        except Exception as e:
+            logger.error(f"[{request_id}] Error marking all as read: {e}")
+            await session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to mark notifications as read"
+            )
+        
+        # Log success
+        log_notification_event(
+            event_type="mark_all_as_read",
+            user_id=user_id,
+            success=True,
+            metadata={"count": count}
+        )
+        
+        logger.info(
+            f"[{request_id}] Marked {count} notifications as read for user: {user_id}"
+        )
+        
+        message = f"{count} notification{'s' if count != 1 else ''} marked as read"
+        
+        return MarkAllAsReadResponse(
+            message=message,
+            count=count,
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            f"[{request_id}] Unexpected error in mark_all_as_read: {e}",
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred"
+        )
+
+
+# =================================
+# GET UNREAD COUNT ENDPOINT (MUST BE BEFORE /{notification_id})
+# =================================
+
+@router.get(
+    "/unread/count",
+    summary="Get unread notification count",
+    description="Get the number of unread notifications for the user",
+    responses={
+        200: {
+            "description": "Unread count",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "count": 5,
+                        "user_id": "123e4567-e89b-12d3-a456-426614174000"
+                    }
+                }
+            }
+        }
+    }
+)
+async def get_unread_count(
+    request: Request,
+    user=Depends(require_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """
+    Get the count of unread notifications.
+    
+    **Use cases:**
+    - Display notification badge count
+    - Update UI notification indicator
+    - Lightweight polling for new notifications
+    
+    **Performance:**
+    - Fast, optimized count query
+    - Can be called frequently
+    - Consider caching in production
+    
+    **Returns:**
+    - Unread notification count
+    - User ID for verification
+    """
+    request_id = generate_request_id()
+    user_id = extract_user_id(user)
+    
+    try:
+        # Get unread notifications
+        try:
+            notifications = await NotificationService.get_user_notifications(
+                session=session,
+                user_id=user_id,
+                limit=10000,  # High limit to get all
+                offset=0,
+                unread_only=True,
+            )
+            
+            unread_count = len(notifications)
+            
+        except Exception as e:
+            logger.error(f"[{request_id}] Error getting unread count: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to get unread count"
+            )
+        
+        logger.debug(
+            f"[{request_id}] Unread count retrieved - User: {user_id}, Count: {unread_count}"
+        )
+        
+        return {
+            "count": unread_count,
+            "user_id": user_id,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            f"[{request_id}] Unexpected error in get_unread_count: {e}",
+            exc_info=True
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred"
+        )
+
+
+# =================================
 # GET SINGLE NOTIFICATION ENDPOINT
 # =================================
 
@@ -570,105 +757,6 @@ async def update_notification(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred"
         )
-
-
-# =================================
-# MARK ALL AS READ ENDPOINT
-# =================================
-
-@router.put(
-    "/mark-all-read",
-    response_model=MarkAllAsReadResponse,
-    summary="Mark all notifications as read",
-    description="Mark all unread notifications for the user as read",
-    responses={
-        200: {
-            "description": "All notifications marked as read",
-            "model": MarkAllAsReadResponse
-        },
-        500: {
-            "description": "Internal server error"
-        }
-    }
-)
-async def mark_all_notifications_as_read(
-    request: Request,
-    user=Depends(require_user),
-    session: AsyncSession = Depends(get_session),
-) -> MarkAllAsReadResponse:
-    """
-    Mark all notifications for the user as read.
-    
-    **Use cases:**
-    - User clicks "Mark all as read" button
-    - Batch operation for better UX
-    - Clear notification badge
-    
-    **Performance:**
-    - Efficient bulk update operation
-    - Returns count of updated notifications
-    - Idempotent - safe to call multiple times
-    
-    **Returns:**
-    - Count of notifications marked as read
-    - Success message
-    """
-    request_id = generate_request_id()
-    user_id = extract_user_id(user)
-    
-    logger.info(f"[{request_id}] Mark all as read - User: {user_id}")
-    
-    try:
-        # Mark all notifications as read
-        try:
-            count = await NotificationService.mark_all_notifications_as_read(
-                session=session,
-                user_id=user_id,
-            )
-        except SQLAlchemyError as e:
-            logger.error(f"[{request_id}] Database error marking all as read: {e}")
-            await session.rollback()
-            raise DatabaseError("marking notifications as read")
-        except Exception as e:
-            logger.error(f"[{request_id}] Error marking all as read: {e}")
-            await session.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to mark notifications as read"
-            )
-        
-        # Log success
-        log_notification_event(
-            event_type="mark_all_as_read",
-            user_id=user_id,
-            success=True,
-            metadata={"count": count}
-        )
-        
-        logger.info(
-            f"[{request_id}] Marked {count} notifications as read for user: {user_id}"
-        )
-        
-        message = f"{count} notification{'s' if count != 1 else ''} marked as read"
-        
-        return MarkAllAsReadResponse(
-            message=message,
-            count=count,
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(
-            f"[{request_id}] Unexpected error in mark_all_as_read: {e}",
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred"
-        )
-
-
 # =================================
 # DELETE NOTIFICATION ENDPOINT
 # =================================
@@ -912,96 +1000,6 @@ async def bulk_delete_notifications(
     except Exception as e:
         logger.error(
             f"[{request_id}] Unexpected error in bulk_delete: {e}",
-            exc_info=True
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred"
-        )
-
-
-# =================================
-# GET UNREAD COUNT ENDPOINT (BONUS)
-# =================================
-
-@router.get(
-    "/unread/count",
-    summary="Get unread notification count",
-    description="Get the number of unread notifications for the user",
-    responses={
-        200: {
-            "description": "Unread count",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "count": 5,
-                        "user_id": "123e4567-e89b-12d3-a456-426614174000"
-                    }
-                }
-            }
-        }
-    }
-)
-async def get_unread_count(
-    request: Request,
-    user=Depends(require_user),
-    session: AsyncSession = Depends(get_session),
-) -> dict:
-    """
-    Get the count of unread notifications.
-    
-    **Use cases:**
-    - Display notification badge count
-    - Update UI notification indicator
-    - Lightweight polling for new notifications
-    
-    **Performance:**
-    - Fast, optimized count query
-    - Can be called frequently
-    - Consider caching in production
-    
-    **Returns:**
-    - Unread notification count
-    - User ID for verification
-    """
-    request_id = generate_request_id()
-    user_id = extract_user_id(user)
-    
-    try:
-        # Get unread notifications
-        try:
-            notifications = await NotificationService.get_user_notifications(
-                session=session,
-                user_id=user_id,
-                limit=10000,  # High limit to get all
-                offset=0,
-                unread_only=True,
-            )
-            
-            unread_count = len(notifications)
-            
-        except Exception as e:
-            logger.error(f"[{request_id}] Error getting unread count: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to get unread count"
-            )
-        
-        logger.debug(
-            f"[{request_id}] Unread count retrieved - User: {user_id}, Count: {unread_count}"
-        )
-        
-        return {
-            "count": unread_count,
-            "user_id": user_id,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(
-            f"[{request_id}] Unexpected error in get_unread_count: {e}",
             exc_info=True
         )
         raise HTTPException(

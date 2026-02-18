@@ -21,6 +21,7 @@ from src.services.task_service import (
     delete_task,
     get_task,
     get_user_tasks,
+    restore_task,
     toggle_complete,
     update_task,
 )
@@ -36,6 +37,7 @@ async def list_tasks(
     user=Depends(require_user),
     session: AsyncSession = Depends(get_session),
     status: Optional[str] = Query(None, description="Filter by status: 'all', 'pending', 'completed', 'deleted'"),
+    priority: Optional[str] = Query(None, description="Filter by priority: 'LOW', 'MEDIUM', 'HIGH'"),
     date_from: Optional[datetime] = Query(None, description="Filter tasks created after this date (ISO format)"),
     date_to: Optional[datetime] = Query(None, description="Filter tasks created before this date (ISO format)"),
     include_deleted: bool = Query(False, description="Include soft-deleted tasks in the results"),
@@ -44,17 +46,19 @@ async def list_tasks(
     List tasks for the authenticated user with optional filtering.
 
     Returns only tasks owned by the authenticated user (user isolation).
-    Supports filtering by status, date range, and inclusion of deleted tasks.
+    Supports filtering by status, priority, date range, and inclusion of deleted tasks.
     """
     print(f"DEBUG: Listing tasks for user: {user.user_id}")
 
     # Convert status to lowercase for comparison
     normalized_status = status.lower() if status else None
+    normalized_priority = priority.upper() if priority else None
 
     tasks = await get_user_tasks(
         session=session,
         user_id=user.user_id,
         status=normalized_status,
+        priority=normalized_priority,
         date_from=date_from,
         date_to=date_to,
         include_deleted=include_deleted
@@ -68,6 +72,9 @@ async def list_tasks(
             title=task.title,
             description=task.description,
             completed=task.completed,
+            priority=task.priority,
+            is_deleted=task.is_deleted,
+            deleted_at=task.deleted_at,
             created_at=task.created_at,
             updated_at=task.updated_at,
         )
@@ -132,6 +139,8 @@ async def create_new_task(
         user_id=user.user_id,
         title=request.title,
         description=request.description,
+        priority=request.priority,
+        due_date=request.due_date,
     )
 
     # Create notification for task creation
@@ -148,6 +157,10 @@ async def create_new_task(
         title=task.title,
         description=task.description,
         completed=task.completed,
+        priority=task.priority,
+        due_date=task.due_date,
+        is_deleted=task.is_deleted,
+        deleted_at=task.deleted_at,
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
@@ -163,7 +176,7 @@ async def update_full_task(
     """
     Full update (replace) of a task.
 
-    All fields (title, description, completed) are required.
+    All fields (title, description, completed, priority) are required.
     Validates title length (1-200 chars).
     Returns 403 if task belongs to another user.
     Returns 404 if task does not exist.
@@ -176,6 +189,8 @@ async def update_full_task(
         title=request.title,
         description=request.description,
         completed=request.completed,
+        priority=request.priority,
+        due_date=request.due_date,
     )
 
     if task is None:
@@ -205,6 +220,10 @@ async def update_full_task(
         title=task.title,
         description=task.description,
         completed=task.completed,
+        priority=task.priority,
+        due_date=task.due_date,
+        is_deleted=task.is_deleted,
+        deleted_at=task.deleted_at,
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
@@ -233,6 +252,8 @@ async def update_partial_task(
         title=request.title,
         description=request.description,
         completed=request.completed,
+        priority=request.priority,
+        due_date=request.due_date,
     )
 
     if task is None:
@@ -262,6 +283,10 @@ async def update_partial_task(
         title=task.title,
         description=task.description,
         completed=task.completed,
+        priority=task.priority,
+        due_date=task.due_date,
+        is_deleted=task.is_deleted,
+        deleted_at=task.deleted_at,
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
@@ -270,25 +295,22 @@ async def update_partial_task(
 @router.patch("/{task_id}/complete", response_model=TaskResponse)
 async def toggle_task_complete(
     task_id: int,
-    request: TaskComplete,
+    request: TaskComplete | None = None,
     user=Depends(require_user),
     session: AsyncSession = Depends(get_session),
 ) -> TaskResponse:
     """
     Toggle task completion status.
 
-    Only updates the completed field.
+    If no body is provided, automatically toggles the current state.
+    If body with 'completed' is provided, sets to that value.
     Returns 403 if task belongs to another user.
     Returns 404 if task does not exist.
     """
-    task = await toggle_complete(
-        session=session,
-        task_id=task_id,
-        user_id=user.user_id,
-        completed=request.completed,
-    )
-
-    if task is None:
+    # First get the current task to check its state
+    current_task = await get_task(session, task_id, user.user_id)
+    
+    if current_task is None:
         from sqlalchemy import select
         existing = await session.execute(select(Task).where(Task.id == task_id))
         if existing.scalar_one_or_none() is not None:
@@ -300,10 +322,25 @@ async def toggle_task_complete(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=RESOURCE_NOT_FOUND,
         )
+    
+    # Determine the new completed state
+    if request is None:
+        # Auto-toggle: flip the current state
+        new_completed = not current_task.completed
+    else:
+        # Use the provided value
+        new_completed = request.completed
+    
+    task = await toggle_complete(
+        session=session,
+        task_id=task_id,
+        user_id=user.user_id,
+        completed=new_completed,
+    )
 
     # Create notification for task completion status change
     notification_type = (
-        NotificationType.TASK_COMPLETED if request.completed 
+        NotificationType.TASK_COMPLETED if new_completed 
         else NotificationType.TASK_PENDING
     )
     await NotificationService.create_task_notification(
@@ -319,9 +356,14 @@ async def toggle_task_complete(
         title=task.title,
         description=task.description,
         completed=task.completed,
+        priority=task.priority,
+        due_date=task.due_date,
+        is_deleted=task.is_deleted,
+        deleted_at=task.deleted_at,
         created_at=task.created_at,
         updated_at=task.updated_at,
     )
+
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -393,10 +435,14 @@ async def restore_deleted_task(
     Returns 403 if task belongs to another user.
     Returns 404 if task does not exist or is not deleted.
     """
-    # Get task to verify it exists and belongs to user (including soft-deleted ones)
-    task = await get_task(session, task_id, user.user_id, include_deleted=True)
+    # Use the restore_task service function
+    success = await restore_task(
+        session=session,
+        task_id=task_id,
+        user_id=user.user_id,
+    )
 
-    if task is None:
+    if not success:
         # Check if task exists but belongs to different user
         from sqlalchemy import select
         existing = await session.execute(select(Task).where(Task.id == task_id))
@@ -407,32 +453,12 @@ async def restore_deleted_task(
             )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=RESOURCE_NOT_FOUND,
+            detail="Task not found or not deleted",
         )
 
-    # Check if task is actually deleted
-    if not task.is_deleted:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Task is not deleted and cannot be restored",
-        )
-
-    success = await update_task(
-        session=session,
-        task_id=task_id,
-        user_id=user.user_id,
-        is_deleted=False,
-    )
-
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=RESOURCE_NOT_FOUND,
-        )
-
-    # Refresh task to get updated data
-    refreshed_task = await get_task(session, task_id, user.user_id)
-    if not refreshed_task:
+    # Get the restored task
+    restored_task = await get_task(session, task_id, user.user_id)
+    if not restored_task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=RESOURCE_NOT_FOUND,
@@ -442,16 +468,19 @@ async def restore_deleted_task(
     await NotificationService.create_task_notification(
         session=session,
         user_id=user.user_id,
-        task=refreshed_task,
+        task=restored_task,
         notification_type=NotificationType.TASK_CREATED,  # Using CREATED for restoration
     )
 
     return TaskResponse(
-        id=refreshed_task.id,
-        user_id=refreshed_task.user_id,
-        title=refreshed_task.title,
-        description=refreshed_task.description,
-        completed=refreshed_task.completed,
-        created_at=refreshed_task.created_at,
-        updated_at=refreshed_task.updated_at,
+        id=restored_task.id,
+        user_id=restored_task.user_id,
+        title=restored_task.title,
+        description=restored_task.description,
+        completed=restored_task.completed,
+        priority=restored_task.priority,
+        is_deleted=restored_task.is_deleted,
+        deleted_at=restored_task.deleted_at,
+        created_at=restored_task.created_at,
+        updated_at=restored_task.updated_at,
     )

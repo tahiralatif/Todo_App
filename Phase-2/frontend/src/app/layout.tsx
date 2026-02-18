@@ -1,12 +1,15 @@
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import '../styles/globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
-import { AccessibilityProvider } from '@/components/ui/AccessibilityProvider';
-import { NotificationProvider } from '@/components/ui/Notifications';
-import { WebSocketProvider } from '@/components/providers/WebSocketProvider';
+import { ToastProvider } from '@/contexts/ToastContext';
 
-export const metadata = {
-  title: 'Todo App - High-End UI',
-  description: 'Premium task management interface with cinematic depth design',
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata: Metadata = {
+  title: 'Execute - Structured Productivity System',
+  description: 'Structured task management. Smart notifications. Clean execution workflow. Built for focused builders and modern teams.',
+  keywords: 'productivity, task management, todo app, project management, team collaboration',
 };
 
 export default function RootLayout({
@@ -15,16 +18,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="bg-background text-foreground antialiased">
+    <html lang="en" className="dark">
+      <body className={inter.className}>
         <AuthProvider>
-          <WebSocketProvider>
-            <NotificationProvider>
-              <AccessibilityProvider>
-                {children}
-              </AccessibilityProvider>
-            </NotificationProvider>
-          </WebSocketProvider>
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

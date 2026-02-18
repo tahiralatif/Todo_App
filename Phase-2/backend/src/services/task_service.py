@@ -18,6 +18,8 @@ async def create_task(
     user_id: str,
     title: str,
     description: str | None = None,
+    priority: str = "MEDIUM",
+    due_date: datetime | None = None,
 ) -> Task:
     """
     Create a new task linked to the specified user.
@@ -27,14 +29,22 @@ async def create_task(
         user_id: Owning user's UUID (from JWT sub claim)
         title: Task title (1-200 characters, validated by Pydantic schema)
         description: Optional task description (0-1000 characters)
+        priority: Task priority (LOW, MEDIUM, HIGH)
+        due_date: Optional due date and time for the task
 
     Returns:
         Created Task instance
     """
+    # Remove timezone info if present (database uses TIMESTAMP WITHOUT TIME ZONE)
+    if due_date is not None and hasattr(due_date, 'tzinfo') and due_date.tzinfo is not None:
+        due_date = due_date.replace(tzinfo=None)
+    
     task = Task(
         user_id=user_id,
         title=title,
         description=description,
+        priority=priority,
+        due_date=due_date,
     )
     session.add(task)
     await session.commit()
@@ -46,6 +56,7 @@ async def get_user_tasks(
     session: AsyncSession,
     user_id: str,
     status: Optional[str] = None,
+    priority: Optional[str] = None,
     date_from: Optional[datetime] = None,
     date_to: Optional[datetime] = None,
     include_deleted: bool = False,
@@ -57,6 +68,7 @@ async def get_user_tasks(
         session: Async database session
         user_id: Owning user's UUID (from JWT sub claim)
         status: Filter by status ("pending", "completed", "all", "deleted")
+        priority: Filter by priority ("LOW", "MEDIUM", "HIGH")
         date_from: Filter tasks created after this date
         date_to: Filter tasks created before this date
         include_deleted: Whether to include soft-deleted tasks
@@ -85,6 +97,10 @@ async def get_user_tasks(
         # Default behavior - exclude deleted tasks
         if not include_deleted:
             statement = statement.where(Task.is_deleted == False)
+
+    # Apply priority filter
+    if priority:
+        statement = statement.where(Task.priority == priority)
 
     # Apply date filters
     if date_from:
@@ -136,6 +152,8 @@ async def update_task(
     title: str | None = None,
     description: str | None = None,
     completed: bool | None = None,
+    priority: str | None = None,
+    due_date: datetime | None = None,
 ) -> Task | None:
     """
     Update an existing task with validation.
@@ -147,6 +165,8 @@ async def update_task(
         title: New title (optional, validates 1-200 chars)
         description: New description (optional)
         completed: New completion status (optional)
+        priority: New priority (optional, LOW/MEDIUM/HIGH)
+        due_date: New due date (optional)
 
     Returns:
         Updated Task if found and owned, None otherwise
@@ -184,6 +204,16 @@ async def update_task(
 
     if completed is not None:
         task.completed = completed
+
+    if priority is not None:
+        task.priority = priority
+
+    if due_date is not None:
+        # Remove timezone info if present (database uses TIMESTAMP WITHOUT TIME ZONE)
+        if hasattr(due_date, 'tzinfo') and due_date.tzinfo is not None:
+            task.due_date = due_date.replace(tzinfo=None)
+        else:
+            task.due_date = due_date
 
     task.updated_at = datetime.now()
     await session.commit()
