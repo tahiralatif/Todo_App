@@ -8,7 +8,7 @@ node_modules/
 *.log
 
 # env
-.env
+.env.local
 
 # lock files if needed (optional)
 # package-lock.json
